@@ -1,0 +1,21 @@
+[package]
+name = "rve"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+
+[dependencies]
+anyhow = "1.0.100"
+axum = "0.8.8"
+clap = { version = "4.5.54", features = ["derive"] }
+colored = "3.1.1"
+datalogic-rs = "4.0.9"
+indoc = "2.0.7"
+rve-core = { version = "0.1.0", path = "../rve-core" }
+serde_json = { workspace = true }
+tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+thiserror = { workspace = true }
