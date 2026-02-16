@@ -1,0 +1,49 @@
+default_job = "check"
+
+# 2. Tareas (Jobs)
+[jobs.check]
+command = ["cargo", "check", "--color", "always"]
+need_stdout = false
+
+[jobs.clippy]
+command = ["cargo", "clippy", "--color", "always"]
+need_stdout = false
+
+[jobs.format]
+command = ["cargo", "fmt"]
+need_stdout = false
+
+[jobs.test]
+command = ["cargo", "test", "--color", "always"]
+need_stdout = true
+
+# 🚀 Tarea principal para el Red Velvet Engine
+[jobs.run]
+command = ["cargo", "run", "--color", "always"]
+need_stdout = true
+allow_warnings = true
+on_change_strategy = "kill_then_restart"
+env.FORCE_COLOR = "1"
+env.CLICOLOR_FORCE = "1"
+wrap = false
+hide_scrollbar = true
+background = true
+reverse = false
+summary = false
+
+
+# 3. Atajos de teclado
+[keybindings]
+c = "job:clippy"
+t = "job:test"
+r = "job:run"
+f = "job:format"
+
+# 4. Tema Visual (Red Velvet / Black Cherry Skin)
+[skin]
+status_bg = 52             # Fondo rojo oscuro
+status_fg = 15             # Texto blanco brillante
+status_key_fg = 210        # Teclas resaltadas en salmón/rojo claro
+key_fg = 210               # Letras de atajos a juego
+project_name_badge_bg = 88 # Fondo rojo más vivo para el nombre del proyecto
+project_name_badge_fg = 15 # Texto blanco para el nombre
