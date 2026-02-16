@@ -1,11 +1,16 @@
+mod connectors;
 mod rules;
 
-use axum::{Router, routing::get};
+use axum::{
+  Router,
+  routing::{get, post},
+};
 
 use crate::http::state::AppState;
 
 pub fn router() -> Router<AppState> {
   Router::new()
+    .route("/connectors/{connector}", post(connectors::ingest_event))
     .route("/rules", get(rules::list_rules).post(rules::create_rule))
     .route("/rules/{id}", get(rules::get_rule).put(rules::update_rule).delete(rules::delete_rule))
 }

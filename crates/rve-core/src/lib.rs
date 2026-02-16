@@ -2,7 +2,8 @@ pub mod domain;
 pub mod ports;
 pub mod services;
 
-pub use ports::RuleExecutorPort;
+pub use ports::{DataConnectorPort, RuleExecutorPort};
+pub use services::connector::{ConnectorAck, ConnectorError, ConnectorKind, ConnectorStatus};
 
 // Engine Edition
 pub const ENGINE_NAME: &str = "Red Velvet Engine";

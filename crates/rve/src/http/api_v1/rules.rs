@@ -5,7 +5,7 @@ use axum::{
 };
 use redis::AsyncCommands;
 use semver::Version;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{Value, json};
 
 use rve_core::domain::{
@@ -51,22 +51,8 @@ pub async fn list_rules(
   Json(Vec::new())
 }
 
-/// Json extractor - extracts and deserializes JSON body
-#[derive(Debug, Deserialize)]
-pub struct CreateUserRequest {
-  name: String,
-  email: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct CreateUserResponse {
-  id: u64,
-  name: String,
-  email: String,
-}
-
-pub async fn create_rule(Json(payload): Json<CreateUserRequest>) -> Json<CreateUserResponse> {
-  Json(CreateUserResponse { id: 1, name: payload.name, email: payload.email })
+pub async fn create_rule() -> Json<bool> {
+  Json(true)
 }
 
 pub async fn get_rule(Path(_id): Path<String>) -> Json<Rule> {
