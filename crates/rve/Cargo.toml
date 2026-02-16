@@ -11,7 +11,6 @@ anyhow = "1.0.100"
 axum = "0.8.8"
 clap = { version = "4.5.54", features = ["derive"] }
 colored = "3.1.1"
-datalogic-rs = "4.0.9"
 indoc = "2.0.7"
 rve-core = { version = "0.1.0", path = "../rve-core" }
 serde_json = { workspace = true }
@@ -19,3 +18,9 @@ tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 thiserror = { workspace = true }
+arc-swap = "1.8.0"
+chrono = "0.4.43"
+serde = { version = "1.0.228", features = ["derive"] }
+dataflow-rs = "2.0.15"
+semver = { version = "1.0.27", features = ["serde"] }
+redis = { version = "1.0.3", features = ["tokio-comp"] }

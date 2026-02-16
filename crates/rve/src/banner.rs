@@ -6,17 +6,17 @@ use rve_core::{ENGINE_CODENAME, ENGINE_EMOJI, PKG_DESCRIPTION, PKG_VERSION};
 pub struct ReadyMsg(String);
 
 impl Drop for ReadyMsg {
-    fn drop(&mut self) {
-        println!("\n{}", self.0);
-    }
+  fn drop(&mut self) {
+    println!("\n{}", self.0);
+  }
 }
 
 pub fn show_banner(quiet: bool) -> Option<ReadyMsg> {
-    if quiet {
-        return None;
-    }
+  if quiet {
+    return None;
+  }
 
-    let banner = indoc! {r"
+  let banner = indoc! {r"
           ____          _  __     __     _            _
          |  _ \ ___  __| | \ \   / /__  | |_   _____ | |_
          | |_) / _ \/ _` |  \ \ / / _ \ | \ \ / / _ \| __|
@@ -24,28 +24,24 @@ pub fn show_banner(quiet: bool) -> Option<ReadyMsg> {
          |_| \_\___|\__,_|    \_/ \___| |_| \_/ \___| \__|
     "};
 
-    // Limpiamos pantalla
-    print!("{}[2J{}[1;1H", 27 as char, 27 as char);
+  for line in banner.lines() {
+    // iterate, to prevent color errors
+    println!("{}", line.red().bold());
+  }
 
-    println!("{}", banner.red().bold());
+  println!();
 
-    // Subtítulo 100% dinámico
-    let edition_info = format!("{} Edition", ENGINE_CODENAME);
-    println!(
-        "{:>48}",
-        format!(
-            "{} {} v{}",
-            edition_info.black().on_red(),
-            ENGINE_EMOJI,
-            PKG_VERSION
-        )
-        .bold()
-    );
+  // Subtítulo 100% dinámico
+  let edition_info = format!("{} Edition", ENGINE_CODENAME);
+  println!(
+    "{:>48}",
+    format!("{} {} v{}", edition_info.black().on_red(), ENGINE_EMOJI, PKG_VERSION).bold()
+  );
 
-    println!("\n{}", PKG_DESCRIPTION.bright_black().italic());
-    println!("{}\n", "─".repeat(60).bright_black());
+  println!("\n{}", PKG_DESCRIPTION.bright_black().italic());
+  println!("{}\n", "─".repeat(60).bright_black());
 
-    let ready = format!("🚀 {} is hot and ready.", "RVE").green().bold();
+  let ready = format!("🚀 {} is hot and ready.", "RVE").green().bold();
 
-    Some(ReadyMsg(ready.to_string()))
+  Some(ReadyMsg(ready.to_string()))
 }
