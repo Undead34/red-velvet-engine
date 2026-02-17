@@ -2,7 +2,7 @@ pub mod domain;
 pub mod ports;
 pub mod services;
 
-pub use ports::RuleExecutorPort;
+pub use ports::{RuleExecutorPort, RuleRepositoryPort};
 
 // Engine Edition
 pub const ENGINE_NAME: &str = "Red Velvet Engine";

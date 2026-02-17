@@ -1,19 +1,19 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use axum::{
   Json,
   extract::{Path, Query, State},
   http::StatusCode,
+  response::IntoResponse,
 };
-use redis::AsyncCommands;
-use semver::Version;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
 
-use rve_core::domain::{
-  common::{Score, Severity},
-  rule::*,
-};
+use rve_core::domain::rule::{self, *};
+use rve_core::ports::RuleRepositoryError;
+use tracing::error;
 
-use crate::http::state::AppState;
+use crate::http::state::{AppState, EngineSyncError};
 
 #[derive(Deserialize)]
 pub struct Pagination {
@@ -21,109 +21,172 @@ pub struct Pagination {
   pub limit: Option<u32>,
 }
 
-/// Lists all rules with pagination
+#[derive(Serialize)]
+pub struct RuleListResponse {
+  pub data: Vec<Rule>,
+  pub pagination: PaginationMeta,
+}
+
+#[derive(Serialize)]
+pub struct PaginationMeta {
+  pub page: u32,
+  pub limit: u32,
+  pub total: u32,
+}
+
+/// Lists all rules with pagination metadata.
 pub async fn list_rules(
   State(state): State<AppState>,
   Query(pagination): Query<Pagination>,
-) -> Json<Vec<Rule>> {
-  let _page = pagination.page.unwrap_or(1);
-  let _limit = pagination.limit.unwrap_or(10);
+) -> Result<Json<RuleListResponse>, StatusCode> {
+  let page = pagination.page.filter(|p| *p > 0).unwrap_or(1);
+  let limit = pagination.limit.filter(|l| *l > 0).unwrap_or(20).min(100);
 
-  let mut r = state.store.get_connection().await;
+  let page_data = state.rule_repo.list(page, limit).await.map_err(map_repository_error)?;
 
-  if let Ok(res) = r.set("foo", "bar").await {
-    let res: String = res;
-    println!("{res}"); // >>> OK
-  } else {
-    println!("Error setting foo");
-  }
-
-  match r.get("foo").await {
-    Ok(res) => {
-      let res: String = res;
-      println!("{res}"); // >>> bar
-    }
-    Err(e) => {
-      panic!("Error getting foo: {e}");
-    }
-  };
-
-  Json(Vec::new())
-}
-
-/// Json extractor - extracts and deserializes JSON body
-#[derive(Debug, Deserialize)]
-pub struct CreateUserRequest {
-  name: String,
-  email: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct CreateUserResponse {
-  id: u64,
-  name: String,
-  email: String,
-}
-
-pub async fn create_rule(Json(payload): Json<CreateUserRequest>) -> Json<CreateUserResponse> {
-  Json(CreateUserResponse { id: 1, name: payload.name, email: payload.email })
-}
-
-pub async fn get_rule(Path(_id): Path<String>) -> Json<Rule> {
-  Json(Rule {
-    id: "FRAUD-HV-UNTRUSTED-01".into(),
-    meta: RuleMeta {
-      name: "High Value on Untrusted Device".into(),
-      description: Some(
-        "Dispara si el monto es > $5000 y el fingerprint del dispositivo es nuevo.".into(),
-      ),
-      version: Version::new(1, 0, 0),
-      autor: "Analista".into(),
-      tags: None,
-    },
-    state: RuleState {
-      mode: mode::RuleMode::Active,
-      audit: RuleAudit {
-        created_at_ms: Some(1706790000000),
-        updated_at_ms: Some(1707830000000),
-        created_by: Some("Super User".into()),
-        updated_by: Some("Analyst Jane".into()),
-      },
-    },
-    schedule: RuleSchedule {
-      // Activa desde el pasado, sin fecha de fin
-      active_from_ms: Some(1700000000000),
-      active_until_ms: None,
-    },
-    rollout: RolloutPolicy { percent: 100 },
-    evaluation: RuleEvaluation {
-      condition: Value::Bool(true),
-      // Lógica: (Monto > 5000) AND (Trust Score < 0.4)
-      logic: json!({
-          "and": [
-              { ">": [ { "var": "transaction.amount" }, 5000 ] },
-              { "<": [ { "var": "device.trust_score" }, 0.4 ] }
-          ]
-      }),
-    },
-    enforcement: RuleEnforcement {
-      score_impact: Score::new(8.5).unwrap(),
-      action: RuleAction::Review,
-      severity: Severity::High,
-      tags: vec!["financial_fraud".into(), "device_fingerprinting".into(), "high_value".into()],
-      cooldown_ms: Some(600_000),
-    },
-  })
-}
-
-pub async fn update_rule(Path(id): Path<String>, Json(_payload): Json<Value>) -> Json<Value> {
-  Json(json!({
-      "id": id,
-      "status": "updated",
-      "description": "Rule updated successfully"
+  Ok(Json(RuleListResponse {
+    data: page_data.items,
+    pagination: PaginationMeta { page, limit, total: page_data.total },
   }))
 }
 
-pub async fn delete_rule(Path(_id): Path<String>) -> StatusCode {
-  StatusCode::NO_CONTENT
+pub async fn create_rule(
+  State(state): State<AppState>,
+  Json(payload): Json<RuleDocument>,
+) -> Result<impl IntoResponse, StatusCode> {
+  let rule = payload.into_rule(None);
+  let created = state.rule_repo.create(rule).await.map_err(map_repository_error)?;
+  state.reload_rules().await.map_err(|err| map_engine_sync_error(err, "create"))?;
+  Ok((StatusCode::CREATED, Json(created)))
+}
+
+pub async fn get_rule(
+  State(state): State<AppState>,
+  Path(id): Path<String>,
+) -> Result<Json<Rule>, StatusCode> {
+  state
+    .rule_repo
+    .get(&id)
+    .await
+    .map_err(map_repository_error)?
+    .map(Json)
+    .ok_or(StatusCode::NOT_FOUND)
+}
+
+pub async fn update_rule(
+  State(state): State<AppState>,
+  Path(id): Path<String>,
+  Json(payload): Json<RuleDocument>,
+) -> Result<Json<Rule>, StatusCode> {
+  let rule = payload.into_rule(Some(id));
+  let updated = state.rule_repo.replace(rule).await.map_err(map_repository_error)?;
+  state.reload_rules().await.map_err(|err| map_engine_sync_error(err, "update"))?;
+  Ok(Json(updated))
+}
+
+pub async fn patch_rule(
+  State(state): State<AppState>,
+  Path(id): Path<String>,
+  Json(payload): Json<Value>,
+) -> Result<Json<Rule>, StatusCode> {
+  let mut rule =
+    state.rule_repo.get(&id).await.map_err(map_repository_error)?.ok_or(StatusCode::NOT_FOUND)?;
+
+  apply_patch(&mut rule, payload)?;
+  let saved = state.rule_repo.replace(rule).await.map_err(map_repository_error)?;
+  state.reload_rules().await.map_err(|err| map_engine_sync_error(err, "patch"))?;
+  Ok(Json(saved))
+}
+
+pub async fn delete_rule(State(state): State<AppState>, Path(id): Path<String>) -> StatusCode {
+  match state.rule_repo.delete(&id).await {
+    Ok(()) => match state.reload_rules().await {
+      Ok(()) => StatusCode::NO_CONTENT,
+      Err(err) => map_engine_sync_error(err, "delete"),
+    },
+    Err(err) => map_repository_error(err),
+  }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RuleDocument {
+  #[serde(default)]
+  pub id: Option<rule::RuleId>,
+  pub meta: RuleMeta,
+  pub state: RuleState,
+  pub schedule: RuleSchedule,
+  pub rollout: RolloutPolicy,
+  pub evaluation: RuleEvaluation,
+  pub enforcement: RuleEnforcement,
+}
+
+impl RuleDocument {
+  fn into_rule(self, override_id: Option<String>) -> Rule {
+    Rule {
+      id: override_id.or(self.id).unwrap_or_else(generate_rule_id),
+      meta: self.meta,
+      state: self.state,
+      schedule: self.schedule,
+      rollout: self.rollout,
+      evaluation: self.evaluation,
+      enforcement: self.enforcement,
+    }
+  }
+}
+
+fn generate_rule_id() -> String {
+  let millis = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
+  format!("FRAUD-AUTO-{millis}")
+}
+
+fn apply_patch(rule: &mut Rule, patch: Value) -> Result<(), StatusCode> {
+  if let Some(state) = patch.get("state") {
+    if let Some(mode_value) = state.get("mode") {
+      rule.state.mode =
+        serde_json::from_value(mode_value.clone()).map_err(|_| StatusCode::BAD_REQUEST)?;
+    }
+    if let Some(audit) = state.get("audit") {
+      if let Some(updated_by) = audit.get("updated_by") {
+        rule.state.audit.updated_by =
+          serde_json::from_value(updated_by.clone()).map_err(|_| StatusCode::BAD_REQUEST)?;
+      }
+      if let Some(updated_at) = audit.get("updated_at_ms") {
+        rule.state.audit.updated_at_ms =
+          serde_json::from_value(updated_at.clone()).map_err(|_| StatusCode::BAD_REQUEST)?;
+      }
+    }
+  }
+
+  if let Some(rollout) = patch.get("rollout") {
+    if let Some(percent) = rollout.get("percent") {
+      rule.rollout.percent =
+        serde_json::from_value(percent.clone()).map_err(|_| StatusCode::BAD_REQUEST)?;
+    }
+  }
+
+  if let Some(schedule) = patch.get("schedule") {
+    if let Some(active_until_ms) = schedule.get("active_until_ms") {
+      rule.schedule.active_until_ms =
+        serde_json::from_value(active_until_ms.clone()).map_err(|_| StatusCode::BAD_REQUEST)?;
+    }
+    if let Some(active_from_ms) = schedule.get("active_from_ms") {
+      rule.schedule.active_from_ms =
+        serde_json::from_value(active_from_ms.clone()).map_err(|_| StatusCode::BAD_REQUEST)?;
+    }
+  }
+
+  Ok(())
+}
+
+pub(crate) fn map_repository_error(error: RuleRepositoryError) -> StatusCode {
+  match error {
+    RuleRepositoryError::AlreadyExists(_) => StatusCode::CONFLICT,
+    RuleRepositoryError::NotFound(_) => StatusCode::NOT_FOUND,
+    RuleRepositoryError::Storage(_) => StatusCode::INTERNAL_SERVER_ERROR,
+  }
+}
+
+fn map_engine_sync_error(error: EngineSyncError, operation: &str) -> StatusCode {
+  error!(target: "BANNER", %error, %operation, "failed to refresh engine ruleset");
+  StatusCode::INTERNAL_SERVER_ERROR
 }

@@ -878,11 +878,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "arc-swap",
+ "async-trait",
  "axum",
  "chrono",
  "clap",
  "colored",
  "dataflow-rs",
+ "datalogic-rs",
  "indoc",
  "redis",
  "rve-core",
@@ -899,10 +901,12 @@ dependencies = [
 name = "rve-core"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "chrono",
  "semver",
  "serde",
  "serde_json",
+ "thiserror",
 ]
 
 [[package]]

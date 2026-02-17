@@ -30,7 +30,7 @@ async fn run() -> Result<(), AppError> {
   let addr: SocketAddr = format!("{}:{}", app.host, app.port).parse()?;
   let listener = TcpListener::bind(addr).await.map_err(AppError::BindFailed)?;
 
-  let state = AppState::new();
+  let state = AppState::new().await;
   let router = build_router(state);
 
   info!(target: "BANNER", "Listening on http://{}", addr);
