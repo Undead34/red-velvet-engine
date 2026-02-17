@@ -113,3 +113,28 @@ Consejos:
 
 - Para evitar `null`, combina con operadores como `missing` o `if` en JSONLogic.
 - Si necesitas nuevas señales (por ejemplo `risk_profile`), inclúyelas en `event.payload.extensions` y automáticamente estarán disponibles bajo `extensions.risk_profile`.
+
+### Detalle de `event.header`, `context`, `signals`, `payload`
+
+| Campo | Subcampos | Tipo / Valores | Notas |
+| --- | --- | --- | --- |
+| `event.header` | `timestamp`, `source`, `event_id?`, `instrument?`, `channel?` | `timestamp`: ISO-8601 (string). Otros campos string libres. | `event_id` habilita idempotencia y bucketing estable. |
+| `context.geo` | `address?`, `city?`, `region?`, `country?`, `postal_code?`, `lon?`, `lat?` | strings / coordenadas (`f64`). | Opcional; útil para reglas por país. |
+| `context.net` | `source_ip?`, `destination_ip?`, `hop_count?`, `asn?`, `isp?` | IPs (`string`), números (`u8/u32`). | IPs se tratan como strings, el motor no valida formato. |
+| `context.env` | `user_agent?`, `locale?`, `timezone?`, `device_id?`, `session_id?` | strings. | `device_id` se refleja en `known_devices`. |
+| `context.fin` | ver ejemplo inicial (campos `first_seen_at`, `last_seen_at`, contadores, sets). | números (`u64`), contadores (`u32`), arrays/sets (`[string]`). | Todos los contadores están en unidades naturales (txn count, amount en centavos). |
+| `signals.flags` | clave = `signal enum`, valor = `unknown|no|yes`. | Ver lista debajo. | Usa `snake_case` (ej. `vpn`, `email_disposable`). |
+| `payload.money` | `value`, `ccy` | `value`: `f64` (importe). `ccy`: string ISO-4217. | Si prefieres centavos, guárdalos en `context.fin`. |
+| `payload.parties.originator/beneficiary` | `entity_type`, `acct`, `country?`, `bank?`, `kyc?`, `watchlist`, `sanctions_score?` | strings y `Flag` (`unknown/no/yes`). | `watchlist` se mapea a `Flag`. |
+| `payload.extensions` | Diccionario libre `string -> json`. | Recomendado: `device`, `transaction`, `risk_profile`, etc. | El motor crea atajos `device` y `transaction`. |
+
+**Enumeraciones admitidas en `signals.flags`:**
+
+```
+vpn, proxy, tor, relay, public_vpn, hosting, timezone_mismatch,
+rooted, jailbroken, emulator, virtual_machine, tampering, cloned_app, frida_detected,
+incognito, devtools_open, remote_control_suspected,
+email_disposable, email_breached, phone_voip, phone_recent_port, has_social_profiles
+```
+
+*(Todos se escriben en `snake_case`. Usa `"flags": { "vpn": "yes" }` por ejemplo.)*
