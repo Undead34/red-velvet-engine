@@ -74,7 +74,7 @@ Este documento sirve como guía práctica para los equipos que necesitan crear/e
 3. **`schedule`**: define ventanas automáticas (campañas, soft-launch). Si ambos campos son `null`, la regla está siempre disponible.
 4. **`rollout.percent`**: arranca en 10-20% para validar, luego sube a 100%. El motor calcula `bucket` automáticamente.
 5. **`evaluation.condition`**: guarda expresiones rápidas/costosas; por ejemplo, `{"==": [{"var": "payload.money.ccy"}, "USD"]}` para evitar evaluar el resto si no aplica.
-6. **`evaluation.logic`**: construye JSONLogic usando las señales disponibles (`event`, `payload`, `context`, `signals`, `extensions`). Es compatible con la misma sintaxis que `dataflow-rs`.
+6. **`evaluation.logic`**: construye JSONLogic usando los campos disponibles (ver sección "Variables disponibles" más abajo). Usa siempre rutas completas (`{"var": "payload.money.value"}`) para evitar ambigüedades.
 7. **`enforcement.score_impact`**: respeta el rango 1.0-10.0 (usa `Score::new`). Si no estás seguro, alinea con la severidad (`Severity::value()` ya sugiere un nivel).
 8. **`enforcement.action`**: define qué hará el workflow aguas arriba (auto-block, review manual, etc.).
 9. **`enforcement.tags`**: agrupa en dashboards (ej. `card_testing`, `kyc_low`).
@@ -95,8 +95,21 @@ Aunque el backend todavía no valida cada campo, se recomienda:
 - Probar la expresión JSONLogic con datos reales antes de `PUT` final (usa herramientas como dataflow-rs CLI o `jq` + unit tests).
 - Mantener convenciones de `tags` y `autor` para facilitar filtros en dashboards.
 
-### Recursos adicionales
+### Variables disponibles en JSONLogic (`var`)
 
-- `docs/rules_decisions_contract.md`: detalle campo por campo con ejemplos.
-- `docs/api_frontend.md`: endpoints y payloads completos para UI o integraciones.
-- `docs/overview.md`: arquitectura general para entender cómo impactan los cambios en Runtime.
+El motor construye un contexto plano con estas claves raíz:
+
+| Variable raíz | Descripción | Ejemplos de rutas |
+| --- | --- | --- |
+| `event` | Evento completo, incluye `header`, `context`, `signals`, `payload`. | `{"var": "event.header.source"}` |
+| `payload` | Alias directo a `event.payload`. | `payload.money.value`, `payload.parties.originator.country` |
+| `context` | Alias directo a `event.context`. | `context.fin.current_day_count` |
+| `signals` | Alias directo a `event.signals`. | `signals.flags.device_rooted` |
+| `extensions` | Alias directo a `event.payload.extensions`. | `extensions.device.trust_score` |
+| `transaction` | Atajo a `extensions.transaction` si existe, `null` si no. | `transaction.amount` |
+| `device` | Atajo a `extensions.device` si existe. | `device.trust_score` |
+
+Consejos:
+
+- Para evitar `null`, combina con operadores como `missing` o `if` en JSONLogic.
+- Si necesitas nuevas señales (por ejemplo `risk_profile`), inclúyelas en `event.payload.extensions` y automáticamente estarán disponibles bajo `extensions.risk_profile`.
