@@ -10,7 +10,7 @@ Este documento sirve como guía práctica para los equipos que necesitan crear/e
 | `meta.description` | string? | Explicación corta para analistas / UI. |
 | `meta.version` | semver (ej. `"1.0.0"`) | Versionado manual para auditoría. |
 | `meta.autor` | string | Dueño de la regla (persona o equipo). |
-| `state.mode` | `active | paused | draft` *(también acepta `enabled`, `suspended`, `staged`, `disabled`)* | Controla si la regla participa en el motor. |
+| `state.mode` | **Solo** `staged`, `active`, `suspended`, `deactivated` | Controla si la regla participa en el motor. Usa `staged` como borrador y `suspended` para “paused”. |
 | `state.audit.created_by/updated_by` | string? | Pista de quién tocó la regla. Debe actualizarse manualmente. |
 | `schedule.active_from_ms` | u64? | Timestamp UTC en milisegundos. Permite diferir activaciones. |
 | `rollout.percent` | u8 (0-100) | Garganta de gradual release. 100 = tráfico completo. |
