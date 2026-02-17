@@ -26,3 +26,4 @@ dataflow-rs = "2.0.15"
 semver = { version = "1.0.27", features = ["serde"] }
 redis = { version = "1.0.3", features = ["tokio-comp"] }
 datalogic-rs = { workspace = true }
+tower-http = { version = "0.5.2", features = ["cors"] }
