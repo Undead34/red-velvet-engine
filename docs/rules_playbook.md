@@ -10,7 +10,7 @@ Este documento sirve como guía práctica para los equipos que necesitan crear/e
 | `meta.description` | string? | Explicación corta para analistas / UI. |
 | `meta.version` | semver (ej. `"1.0.0"`) | Versionado manual para auditoría. |
 | `meta.autor` | string | Dueño de la regla (persona o equipo). |
-| `state.mode` | **Solo** `staged`, `active`, `suspended`, `deactivated` | Controla si la regla participa en el motor. Usa `staged` como borrador y `suspended` para “paused”. |
+| `state.mode` | **Solo** `staged`, `active`, `suspended`, `deactivated` | Estados canónicos descritos abajo. |
 | `state.audit.created_by/updated_by` | string? | Pista de quién tocó la regla. Debe actualizarse manualmente. |
 | `schedule.active_from_ms` | u64? | Timestamp UTC en milisegundos. Permite diferir activaciones. |
 | `rollout.percent` | u8 (0-100) | Garganta de gradual release. 100 = tráfico completo. |
@@ -138,3 +138,9 @@ email_disposable, email_breached, phone_voip, phone_recent_port, has_social_prof
 ```
 
 *(Todos se escriben en `snake_case`. Usa `"flags": { "vpn": "yes" }` por ejemplo.)*
+#### Significado de cada `state.mode`
+
+- `staged`: reglas en borrador. El motor no las evalúa, pero puedes versionarlas y mostrarlas en UI.
+- `active`: regla en producción. Se evalúa siempre que `schedule`/`rollout` lo permitan.
+- `suspended`: regla pausada temporalmente. Se mantiene el historial pero no se evalúa.
+- `deactivated`: regla retirada permanentemente. Úsalo cuando quieras ocultarla de dashboards o marcarla para borrado definitivo.
