@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::{ApiError, ApiResult};
+use super::logic_validation::validate_rule_evaluation;
 
 #[derive(Deserialize)]
 pub struct Pagination {
@@ -198,6 +199,8 @@ pub(super) fn validate_rule(rule: &Rule) -> ApiResult<()> {
       "must be greater than or equal to state.audit.created_at_ms",
     ));
   }
+
+  validate_rule_evaluation(&rule.evaluation)?;
 
   Ok(())
 }
