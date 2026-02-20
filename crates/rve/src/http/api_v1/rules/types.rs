@@ -1,5 +1,5 @@
 use rve_core::domain::{
-  common::{Score, RuleId},
+  common::{RuleId, Score, Severity, TimestampMs},
   rule::{
     Rule, RuleAction, RuleAudit, RuleEnforcement, RuleEvaluation, RuleMeta, RuleSchedule,
     RuleState, RolloutPolicy, mode::RuleMode,
@@ -7,6 +7,7 @@ use rve_core::domain::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use validator::{Validate, ValidationError, ValidationErrors, ValidationErrorsKind};
 
 use super::errors::{ApiError, ApiResult};
 use super::logic_validation::validate_rule_evaluation;
@@ -30,21 +31,29 @@ pub struct PaginationMeta {
   pub total: u32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct RuleDocumentInput {
   #[serde(default)]
   pub id: Option<RuleId>,
+  #[validate(nested)]
   pub meta: RuleMetaInput,
+  #[validate(nested)]
   pub state: RuleStateInput,
+  #[validate(nested)]
   pub schedule: RuleScheduleInput,
+  #[validate(nested)]
   pub rollout: RolloutPolicyInput,
+  #[validate(nested)]
   pub evaluation: RuleEvaluationInput,
+  #[validate(nested)]
   pub enforcement: RuleEnforcementInput,
 }
 
 impl RuleDocumentInput {
   pub(super) fn into_rule(self, override_id: Option<RuleId>) -> ApiResult<Rule> {
+    self.validate().map_err(map_validation_errors)?;
+
     let rule = Rule {
       id: override_id.or(self.id).unwrap_or_else(RuleId::new_v7),
       meta: self.meta.into_domain(),
@@ -60,13 +69,17 @@ impl RuleDocumentInput {
   }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 #[serde(deny_unknown_fields)]
 pub struct RuleMetaInput {
+  #[validate(length(min = 1, max = 120))]
   pub name: String,
+  #[validate(length(max = 1000))]
   pub description: Option<String>,
   pub version: semver::Version,
+  #[validate(length(min = 1, max = 120))]
   pub autor: String,
+  #[validate(length(max = 32))]
   pub tags: Option<Vec<String>>,
 }
 
@@ -82,10 +95,11 @@ impl RuleMetaInput {
   }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 #[serde(deny_unknown_fields)]
 pub struct RuleStateInput {
   pub mode: RuleMode,
+  #[validate(nested)]
   pub audit: RuleAuditInput,
 }
 
@@ -95,12 +109,15 @@ impl RuleStateInput {
   }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 #[serde(deny_unknown_fields)]
+#[validate(schema(function = "validate_audit_input"))]
 pub struct RuleAuditInput {
-  pub created_at_ms: rve_core::domain::common::TimestampMs,
-  pub updated_at_ms: rve_core::domain::common::TimestampMs,
+  pub created_at_ms: TimestampMs,
+  pub updated_at_ms: TimestampMs,
+  #[validate(length(min = 1, max = 120))]
   pub created_by: Option<String>,
+  #[validate(length(min = 1, max = 120))]
   pub updated_by: Option<String>,
 }
 
@@ -115,11 +132,12 @@ impl RuleAuditInput {
   }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 #[serde(deny_unknown_fields)]
+#[validate(schema(function = "validate_schedule_input"))]
 pub struct RuleScheduleInput {
-  pub active_from_ms: Option<rve_core::domain::common::TimestampMs>,
-  pub active_until_ms: Option<rve_core::domain::common::TimestampMs>,
+  pub active_from_ms: Option<TimestampMs>,
+  pub active_until_ms: Option<TimestampMs>,
 }
 
 impl RuleScheduleInput {
@@ -128,9 +146,10 @@ impl RuleScheduleInput {
   }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 #[serde(deny_unknown_fields)]
 pub struct RolloutPolicyInput {
+  #[validate(range(max = 100))]
   pub percent: u8,
 }
 
@@ -140,7 +159,7 @@ impl RolloutPolicyInput {
   }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 #[serde(deny_unknown_fields)]
 pub struct RuleEvaluationInput {
   pub condition: Value,
@@ -153,13 +172,16 @@ impl RuleEvaluationInput {
   }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 #[serde(deny_unknown_fields)]
 pub struct RuleEnforcementInput {
+  #[validate(range(min = 1.0, max = 10.0))]
   pub score_impact: f32,
   pub action: RuleAction,
-  pub severity: rve_core::domain::common::Severity,
+  pub severity: Severity,
+  #[validate(length(min = 1, max = 64))]
   pub tags: Vec<String>,
+  #[validate(range(min = 1, max = 86_400_000))]
   pub cooldown_ms: Option<u64>,
 }
 
@@ -180,35 +202,77 @@ impl RuleEnforcementInput {
 }
 
 pub(super) fn validate_rule(rule: &Rule) -> ApiResult<()> {
-  if rule.rollout.percent > 100 {
-    return Err(ApiError::validation("rollout.percent", "must be between 0 and 100"));
-  }
-
-  if let (Some(from), Some(until)) = (rule.schedule.active_from_ms, rule.schedule.active_until_ms)
-    && until.as_u64() <= from.as_u64()
-  {
-    return Err(ApiError::validation(
-      "schedule.active_until_ms",
-      "must be greater than schedule.active_from_ms",
-    ));
-  }
-
-  if rule.state.audit.updated_at_ms.as_u64() < rule.state.audit.created_at_ms.as_u64() {
-    return Err(ApiError::validation(
-      "state.audit.updated_at_ms",
-      "must be greater than or equal to state.audit.created_at_ms",
-    ));
-  }
-
   validate_rule_evaluation(&rule.evaluation)?;
-
   Ok(())
 }
 
-pub(super) fn parse_patch_value<T>(field: &'static str, value: &Value) -> ApiResult<T>
+pub(super) fn parse_patch_value<T>(field: &str, value: &Value) -> ApiResult<T>
 where
   T: serde::de::DeserializeOwned,
 {
   serde_json::from_value(value.clone())
     .map_err(|_| ApiError::validation(field, "invalid type or value"))
+}
+
+fn validate_schedule_input(schedule: &RuleScheduleInput) -> Result<(), ValidationError> {
+  if let (Some(from), Some(until)) = (schedule.active_from_ms, schedule.active_until_ms)
+    && until.as_u64() <= from.as_u64()
+  {
+    return Err(ValidationError::new("active_until_must_be_greater_than_active_from"));
+  }
+  Ok(())
+}
+
+fn validate_audit_input(audit: &RuleAuditInput) -> Result<(), ValidationError> {
+  if audit.updated_at_ms.as_u64() < audit.created_at_ms.as_u64() {
+    return Err(ValidationError::new("updated_at_must_be_greater_or_equal_created_at"));
+  }
+  Ok(())
+}
+
+fn map_validation_errors(errors: ValidationErrors) -> ApiError {
+  let mut messages = Vec::new();
+  collect_validation_messages("", &errors, &mut messages);
+
+  if let Some((field, message)) = messages.into_iter().next() {
+    ApiError::validation(field, message)
+  } else {
+    ApiError::validation("request", "invalid request payload")
+  }
+}
+
+fn collect_validation_messages(
+  prefix: &str,
+  errors: &ValidationErrors,
+  out: &mut Vec<(String, String)>,
+) {
+  for (field, kind) in errors.errors() {
+    let path = if prefix.is_empty() {
+      field.to_string()
+    } else {
+      format!("{prefix}.{field}")
+    };
+
+    match kind {
+      ValidationErrorsKind::Field(field_errors) => {
+        for field_error in field_errors {
+          let message = field_error
+            .message
+            .clone()
+            .unwrap_or_else(|| field_error.code.to_string().into())
+            .to_string();
+          out.push((path.clone(), message));
+        }
+      }
+      ValidationErrorsKind::Struct(struct_errors) => {
+        collect_validation_messages(&path, struct_errors, out);
+      }
+      ValidationErrorsKind::List(list_errors) => {
+        for (index, nested) in list_errors {
+          let indexed = format!("{path}[{index}]");
+          collect_validation_messages(&indexed, nested, out);
+        }
+      }
+    }
+  }
 }

@@ -13,15 +13,15 @@ pub(crate) type ApiResult<T> = Result<T, ApiError>;
 
 #[derive(Debug)]
 pub(crate) enum ApiError {
-  Validation { field: &'static str, message: String },
+  Validation { field: String, message: String },
   NotFound(String),
   Conflict(String),
   Internal(String),
 }
 
 impl ApiError {
-  pub(super) fn validation(field: &'static str, message: impl Into<String>) -> Self {
-    Self::Validation { field, message: message.into() }
+  pub(super) fn validation(field: impl Into<String>, message: impl Into<String>) -> Self {
+    Self::Validation { field: field.into(), message: message.into() }
   }
 }
 
@@ -38,7 +38,7 @@ impl IntoResponse for ApiError {
     let (status, body) = match self {
       ApiError::Validation { field, message } => (
         StatusCode::BAD_REQUEST,
-        ErrorBody { code: "validation_error", message, field: Some(field.to_owned()) },
+        ErrorBody { code: "validation_error", message, field: Some(field) },
       ),
       ApiError::NotFound(message) => {
         (StatusCode::NOT_FOUND, ErrorBody { code: "not_found", message, field: None })
