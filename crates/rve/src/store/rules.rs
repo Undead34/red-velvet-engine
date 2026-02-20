@@ -84,6 +84,7 @@ fn high_value_untrusted_device() -> Rule {
   Rule {
     id: rule_id("01952031-1a77-7f0c-9f3c-bfd27d450001"),
     meta: RuleMeta {
+      code: Some("FRAUD-HV-UNTRUSTED-01".into()),
       name: "High Value on Untrusted Device".into(),
       description: Some(
         "Dispara si el monto es > $5000 y el fingerprint del dispositivo es nuevo.".into(),
@@ -129,6 +130,7 @@ fn velocity_flag() -> Rule {
   Rule {
     id: rule_id("01952031-1a77-7f0c-9f3c-bfd27d450002"),
     meta: RuleMeta {
+      code: Some("FRAUD-VEL-RETRY-02".into()),
       name: "Velocity Retry Spike".into(),
       description: Some("Dispara si el cliente hace >3 intentos fallidos en 10 minutos".into()),
       version: semver::Version::new(1, 1, 0),

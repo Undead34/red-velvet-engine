@@ -162,28 +162,33 @@ impl From<SessionId> for String {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(try_from = "String", into = "String")]
-pub struct EventId(String);
+pub struct EventId(Uuid);
 
 impl EventId {
-  pub fn new(value: impl Into<String>) -> Result<Self, DomainError> {
-    let value = value.into();
-    if is_valid_identifier(&value) {
-      Ok(Self(value))
-    } else {
-      Err(DomainError::InvalidEventId(value))
-    }
+  pub fn new_v7() -> Self {
+    Self(Uuid::now_v7())
+  }
+
+  pub fn as_uuid(&self) -> &Uuid {
+    &self.0
   }
 }
 
 impl TryFrom<String> for EventId {
   type Error = DomainError;
   fn try_from(value: String) -> Result<Self, Self::Error> {
-    Self::new(value)
+    Uuid::parse_str(&value).map(Self).map_err(|_| DomainError::InvalidEventId(value))
   }
 }
 
 impl From<EventId> for String {
   fn from(value: EventId) -> Self {
-    value.0
+    value.0.to_string()
+  }
+}
+
+impl fmt::Display for EventId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
   }
 }

@@ -66,3 +66,29 @@ fn collect_var_paths<'a>(value: &'a Value, vars: &mut Vec<&'a str>) {
     _ => {}
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use serde_json::json;
+
+  use rve_core::domain::rule::RuleEvaluation;
+
+  use super::validate_rule_evaluation;
+  use crate::http::api_v1::rules::errors::ApiError;
+
+  #[test]
+  fn rejects_disallowed_var_roots() {
+    let evaluation = RuleEvaluation {
+      condition: json!(true),
+      logic: json!({">": [{"var": "config.latam_countries"}, 0]}),
+    };
+
+    let result = validate_rule_evaluation(&evaluation);
+    match result {
+      Err(ApiError::Unprocessable(report)) => {
+        assert!(!report.errors.is_empty());
+      }
+      _ => panic!("expected unprocessable error for invalid var root"),
+    }
+  }
+}

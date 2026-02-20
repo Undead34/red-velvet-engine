@@ -13,7 +13,8 @@ pub(crate) type ApiResult<T> = Result<T, ApiError>;
 
 #[derive(Debug)]
 pub(crate) enum ApiError {
-  Validation { field: String, message: String },
+  BadRequest(String),
+  Unprocessable(ValidationReport),
   NotFound(String),
   Conflict(String),
   Internal(String),
@@ -21,7 +22,10 @@ pub(crate) enum ApiError {
 
 impl ApiError {
   pub(super) fn validation(field: impl Into<String>, message: impl Into<String>) -> Self {
-    Self::Validation { field: field.into(), message: message.into() }
+    Self::Unprocessable(ValidationReport {
+      errors: vec![ValidationIssue { path: field.into(), message: message.into() }],
+      warnings: Vec::new(),
+    })
   }
 }
 
@@ -30,25 +34,44 @@ struct ErrorBody {
   code: &'static str,
   message: String,
   #[serde(skip_serializing_if = "Option::is_none")]
-  field: Option<String>,
+  validation: Option<ValidationReport>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct ValidationIssue {
+  pub path: String,
+  pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct ValidationReport {
+  pub errors: Vec<ValidationIssue>,
+  pub warnings: Vec<ValidationIssue>,
 }
 
 impl IntoResponse for ApiError {
   fn into_response(self) -> Response {
     let (status, body) = match self {
-      ApiError::Validation { field, message } => (
-        StatusCode::BAD_REQUEST,
-        ErrorBody { code: "validation_error", message, field: Some(field) },
+      ApiError::BadRequest(message) => {
+        (StatusCode::BAD_REQUEST, ErrorBody { code: "bad_request", message, validation: None })
+      }
+      ApiError::Unprocessable(report) => (
+        StatusCode::UNPROCESSABLE_ENTITY,
+        ErrorBody {
+          code: "validation_failed",
+          message: "request validation failed".to_owned(),
+          validation: Some(report),
+        },
       ),
       ApiError::NotFound(message) => {
-        (StatusCode::NOT_FOUND, ErrorBody { code: "not_found", message, field: None })
+        (StatusCode::NOT_FOUND, ErrorBody { code: "not_found", message, validation: None })
       }
       ApiError::Conflict(message) => {
-        (StatusCode::CONFLICT, ErrorBody { code: "conflict", message, field: None })
+        (StatusCode::CONFLICT, ErrorBody { code: "conflict", message, validation: None })
       }
       ApiError::Internal(message) => (
         StatusCode::INTERNAL_SERVER_ERROR,
-        ErrorBody { code: "internal_error", message, field: None },
+        ErrorBody { code: "internal_error", message, validation: None },
       ),
     };
 
@@ -57,7 +80,7 @@ impl IntoResponse for ApiError {
 }
 
 pub(super) fn parse_rule_id(id: String) -> ApiResult<RuleId> {
-  RuleId::try_from(id).map_err(|_| ApiError::validation("id", "must be a valid UUID"))
+  RuleId::try_from(id).map_err(|_| ApiError::BadRequest("id must be a valid UUID".to_owned()))
 }
 
 pub(super) fn map_repository_error(error: RuleRepositoryError) -> ApiError {

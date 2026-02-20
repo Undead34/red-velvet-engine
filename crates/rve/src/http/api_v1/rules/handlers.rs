@@ -6,13 +6,17 @@ use axum::{
 };
 use rve_core::domain::rule::Rule;
 use serde_json::Value;
+use tracing::warn;
 
 use crate::http::state::AppState;
 
 use super::{
   errors::{ApiError, ApiResult, map_engine_sync_error, map_repository_error, parse_rule_id},
   patch::apply_patch,
-  types::{Pagination, PaginationMeta, RuleDocumentInput, RuleListResponse, validate_rule},
+  types::{
+    Pagination, PaginationMeta, RuleDocumentInput, RuleListResponse, collect_rule_warnings,
+    validate_rule,
+  },
 };
 
 /// Lists all rules with pagination metadata.
@@ -36,6 +40,9 @@ pub async fn create_rule(
   Json(payload): Json<RuleDocumentInput>,
 ) -> ApiResult<impl IntoResponse> {
   let rule = payload.into_rule(None)?;
+  for warning in collect_rule_warnings(&rule) {
+    warn!(target: "BANNER", path = %warning.path, message = %warning.message, "rule validation warning");
+  }
   let created = state.rule_repo.create(rule).await.map_err(map_repository_error)?;
   state.reload_rules().await.map_err(|err| map_engine_sync_error(err, "create"))?;
   Ok((StatusCode::CREATED, Json(created)))
@@ -63,6 +70,9 @@ pub async fn update_rule(
 ) -> ApiResult<Json<Rule>> {
   let id = parse_rule_id(id)?;
   let rule = payload.into_rule(Some(id))?;
+  for warning in collect_rule_warnings(&rule) {
+    warn!(target: "BANNER", path = %warning.path, message = %warning.message, "rule validation warning");
+  }
   let updated = state.rule_repo.replace(rule).await.map_err(map_repository_error)?;
   state.reload_rules().await.map_err(|err| map_engine_sync_error(err, "update"))?;
   Ok(Json(updated))
@@ -74,19 +84,27 @@ pub async fn patch_rule(
   Json(payload): Json<Value>,
 ) -> ApiResult<Json<Rule>> {
   let id = parse_rule_id(id)?;
-  let mut rule =
-    state.rule_repo.get(&id).await.map_err(map_repository_error)?.ok_or_else(|| {
-      ApiError::NotFound("rule not found".to_owned())
-    })?;
+  let mut rule = state
+    .rule_repo
+    .get(&id)
+    .await
+    .map_err(map_repository_error)?
+    .ok_or_else(|| ApiError::NotFound("rule not found".to_owned()))?;
 
   apply_patch(&mut rule, payload)?;
   validate_rule(&rule)?;
+  for warning in collect_rule_warnings(&rule) {
+    warn!(target: "BANNER", path = %warning.path, message = %warning.message, "rule validation warning");
+  }
   let saved = state.rule_repo.replace(rule).await.map_err(map_repository_error)?;
   state.reload_rules().await.map_err(|err| map_engine_sync_error(err, "patch"))?;
   Ok(Json(saved))
 }
 
-pub async fn delete_rule(State(state): State<AppState>, Path(id): Path<String>) -> ApiResult<StatusCode> {
+pub async fn delete_rule(
+  State(state): State<AppState>,
+  Path(id): Path<String>,
+) -> ApiResult<StatusCode> {
   let id = parse_rule_id(id)?;
 
   match state.rule_repo.delete(&id).await {
