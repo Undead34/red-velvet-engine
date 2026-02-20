@@ -4,11 +4,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::domain::{
-  common::{Score, Severity},
+  common::{RuleId, Score, Severity, TimestampMs},
   rule::mode::RuleMode,
 };
-
-pub type RuleId = String;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Rule {
@@ -48,29 +46,29 @@ pub struct RuleState {
   pub audit: RuleAudit,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RuleAudit {
-  pub created_at_ms: Option<u64>,
-  pub updated_at_ms: Option<u64>,
+  pub created_at_ms: TimestampMs,
+  pub updated_at_ms: TimestampMs,
   pub created_by: Option<String>,
   pub updated_by: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct RuleSchedule {
-  pub active_from_ms: Option<u64>,
-  pub active_until_ms: Option<u64>,
+  pub active_from_ms: Option<TimestampMs>,
+  pub active_until_ms: Option<TimestampMs>,
 }
 
 impl RuleSchedule {
   pub fn is_within_window(&self, now_ms: u64) -> bool {
     if let Some(from) = self.active_from_ms {
-      if now_ms < from {
+      if now_ms < from.as_u64() {
         return false;
       }
     }
     if let Some(until) = self.active_until_ms {
-      if now_ms >= until {
+      if now_ms >= until.as_u64() {
         return false;
       }
     }

@@ -2,7 +2,7 @@ use std::{collections::HashSet, net::IpAddr};
 
 use serde::{Deserialize, Serialize};
 
-use crate::domain::common::CountryCode;
+use crate::domain::common::{CountryCode, DeviceId, LocaleTag, SessionId, TimezoneName, UserAgent};
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct Context {
@@ -34,11 +34,11 @@ pub struct NetworkContext {
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct EnvironmentContext {
-  pub user_agent: Option<String>,
-  pub locale: Option<String>,
-  pub timezone: Option<String>,
-  pub device_id: Option<String>,
-  pub session_id: Option<String>,
+  pub user_agent: Option<UserAgent>,
+  pub locale: Option<LocaleTag>,
+  pub timezone: Option<TimezoneName>,
+  pub device_id: Option<DeviceId>,
+  pub session_id: Option<SessionId>,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]

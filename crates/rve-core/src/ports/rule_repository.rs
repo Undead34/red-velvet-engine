@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-use crate::domain::rule::{Rule, RuleId};
+use crate::domain::{common::RuleId, rule::Rule};
 
 pub type RepositoryResult<T> = Result<T, RuleRepositoryError>;
 

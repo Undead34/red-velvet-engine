@@ -8,11 +8,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::domain::{
-  common::{BankRef, CountryCode, EntityType, Flag, KycLevel, Money},
+  common::{
+    AccountId, BankRef, Channel, CountryCode, EntityType, EventId, EventSource, Flag, Instrument,
+    KycLevel, Money,
+  },
   event::{context::Context, signals::Signals},
 };
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Event {
   pub header: Header,
   pub context: Context,
@@ -20,32 +23,32 @@ pub struct Event {
   pub payload: Payload,
 }
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Header {
   pub timestamp: DateTime<Utc>,
-  pub source: String,
-  pub event_id: Option<String>,
-  pub instrument: Option<String>,
-  pub channel: Option<String>,
+  pub source: EventSource,
+  pub event_id: Option<EventId>,
+  pub instrument: Option<Instrument>,
+  pub channel: Option<Channel>,
 }
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Payload {
   pub money: Money,
   pub parties: Parties,
   pub extensions: BTreeMap<String, Value>,
 }
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Parties {
   pub originator: Party,
   pub beneficiary: Party,
 }
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Party {
   pub entity_type: EntityType,
-  pub acct: String,
+  pub acct: AccountId,
   pub country: Option<CountryCode>,
   pub bank: Option<BankRef>,
   pub kyc: Option<KycLevel>,

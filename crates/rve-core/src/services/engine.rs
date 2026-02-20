@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::domain::{
-  common::Severity,
-  rule::{RuleAction, RuleId},
+  common::{RuleId, Severity},
+  rule::RuleAction,
 };
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

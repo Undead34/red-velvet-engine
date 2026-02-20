@@ -5,7 +5,7 @@ use chrono::{TimeZone, Utc};
 use tokio::sync::RwLock;
 
 use rve_core::domain::{
-  common::{Score, Severity},
+  common::{RuleId, Score, Severity, TimestampMs},
   rule::{mode::RuleMode, *},
 };
 use rve_core::ports::{RepositoryResult, RulePage, RuleRepositoryError, RuleRepositoryPort};
@@ -82,7 +82,7 @@ fn default_rules() -> Vec<Rule> {
 
 fn high_value_untrusted_device() -> Rule {
   Rule {
-    id: "FRAUD-HV-UNTRUSTED-01".into(),
+    id: rule_id("01952031-1a77-7f0c-9f3c-bfd27d450001"),
     meta: RuleMeta {
       name: "High Value on Untrusted Device".into(),
       description: Some(
@@ -95,14 +95,14 @@ fn high_value_untrusted_device() -> Rule {
     state: RuleState {
       mode: RuleMode::Active,
       audit: RuleAudit {
-        created_at_ms: Some(utc_ms(2024, 1, 2, 3, 4, 5)),
-        updated_at_ms: Some(utc_ms(2024, 2, 2, 3, 4, 5)),
+        created_at_ms: TimestampMs::new(utc_ms(2024, 1, 2, 3, 4, 5)).expect("timestamp"),
+        updated_at_ms: TimestampMs::new(utc_ms(2024, 2, 2, 3, 4, 5)).expect("timestamp"),
         created_by: Some("Super User".into()),
         updated_by: Some("Analyst Jane".into()),
       },
     },
     schedule: RuleSchedule {
-      active_from_ms: Some(utc_ms(2023, 10, 1, 0, 0, 0)),
+      active_from_ms: Some(TimestampMs::new(utc_ms(2023, 10, 1, 0, 0, 0)).expect("timestamp")),
       active_until_ms: None,
     },
     rollout: RolloutPolicy { percent: 100 },
@@ -127,7 +127,7 @@ fn high_value_untrusted_device() -> Rule {
 
 fn velocity_flag() -> Rule {
   Rule {
-    id: "FRAUD-VEL-RETRY-02".into(),
+    id: rule_id("01952031-1a77-7f0c-9f3c-bfd27d450002"),
     meta: RuleMeta {
       name: "Velocity Retry Spike".into(),
       description: Some("Dispara si el cliente hace >3 intentos fallidos en 10 minutos".into()),
@@ -138,8 +138,8 @@ fn velocity_flag() -> Rule {
     state: RuleState {
       mode: RuleMode::Active,
       audit: RuleAudit {
-        created_at_ms: Some(utc_ms(2023, 11, 5, 0, 0, 0)),
-        updated_at_ms: Some(utc_ms(2024, 1, 15, 12, 0, 0)),
+        created_at_ms: TimestampMs::new(utc_ms(2023, 11, 5, 0, 0, 0)).expect("timestamp"),
+        updated_at_ms: TimestampMs::new(utc_ms(2024, 1, 15, 12, 0, 0)).expect("timestamp"),
         created_by: Some("Automation".into()),
         updated_by: Some("Fraud Squad".into()),
       },
@@ -167,4 +167,8 @@ fn velocity_flag() -> Rule {
 
 fn utc_ms(year: i32, month: u32, day: u32, hour: u32, min: u32, sec: u32) -> u64 {
   Utc.with_ymd_and_hms(year, month, day, hour, min, sec).unwrap().timestamp_millis() as u64
+}
+
+fn rule_id(value: &str) -> RuleId {
+  RuleId::try_from(value.to_owned()).expect("seed rule id")
 }

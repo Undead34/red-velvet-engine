@@ -66,7 +66,12 @@ impl From<RuleHit> for DecisionHit {
   fn from(hit: RuleHit) -> Self {
     let explanation =
       hit.explanation.filter(|s| !s.is_empty()).unwrap_or_else(|| "Rule triggered".into());
-    Self { rule_id: hit.rule_id, action: hit.action, severity: hit.severity, explanation }
+    Self {
+      rule_id: hit.rule_id.to_string(),
+      action: hit.action,
+      severity: hit.severity,
+      explanation,
+    }
   }
 }
 

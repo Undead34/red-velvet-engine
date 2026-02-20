@@ -11,10 +11,7 @@ use serde_json::{Value, json};
 use thiserror::Error;
 
 use rve_core::{
-  domain::{
-    event::Event,
-    rule::{Rule, RuleId},
-  },
+  domain::{common::RuleId, event::Event, rule::Rule},
   services::engine::{EngineResult, RuleHit},
 };
 

@@ -1,5 +1,3 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use axum::{
   Json,
   extract::{Path, Query, State},
@@ -9,7 +7,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use rve_core::domain::rule::{self, *};
+use rve_core::domain::{common::RuleId, rule::*};
 use rve_core::ports::RuleRepositoryError;
 use tracing::error;
 
@@ -64,6 +62,8 @@ pub async fn get_rule(
   State(state): State<AppState>,
   Path(id): Path<String>,
 ) -> Result<Json<Rule>, StatusCode> {
+  let id = parse_rule_id(id)?;
+
   state
     .rule_repo
     .get(&id)
@@ -78,6 +78,7 @@ pub async fn update_rule(
   Path(id): Path<String>,
   Json(payload): Json<RuleDocument>,
 ) -> Result<Json<Rule>, StatusCode> {
+  let id = parse_rule_id(id)?;
   let rule = payload.into_rule(Some(id));
   let updated = state.rule_repo.replace(rule).await.map_err(map_repository_error)?;
   state.reload_rules().await.map_err(|err| map_engine_sync_error(err, "update"))?;
@@ -89,6 +90,7 @@ pub async fn patch_rule(
   Path(id): Path<String>,
   Json(payload): Json<Value>,
 ) -> Result<Json<Rule>, StatusCode> {
+  let id = parse_rule_id(id)?;
   let mut rule =
     state.rule_repo.get(&id).await.map_err(map_repository_error)?.ok_or(StatusCode::NOT_FOUND)?;
 
@@ -99,6 +101,11 @@ pub async fn patch_rule(
 }
 
 pub async fn delete_rule(State(state): State<AppState>, Path(id): Path<String>) -> StatusCode {
+  let id = match parse_rule_id(id) {
+    Ok(id) => id,
+    Err(status) => return status,
+  };
+
   match state.rule_repo.delete(&id).await {
     Ok(()) => match state.reload_rules().await {
       Ok(()) => StatusCode::NO_CONTENT,
@@ -111,7 +118,7 @@ pub async fn delete_rule(State(state): State<AppState>, Path(id): Path<String>) 
 #[derive(Debug, Deserialize)]
 pub struct RuleDocument {
   #[serde(default)]
-  pub id: Option<rule::RuleId>,
+  pub id: Option<RuleId>,
   pub meta: RuleMeta,
   pub state: RuleState,
   pub schedule: RuleSchedule,
@@ -121,7 +128,7 @@ pub struct RuleDocument {
 }
 
 impl RuleDocument {
-  fn into_rule(self, override_id: Option<String>) -> Rule {
+  fn into_rule(self, override_id: Option<RuleId>) -> Rule {
     Rule {
       id: override_id.or(self.id).unwrap_or_else(generate_rule_id),
       meta: self.meta,
@@ -134,9 +141,12 @@ impl RuleDocument {
   }
 }
 
-fn generate_rule_id() -> String {
-  let millis = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-  format!("FRAUD-AUTO-{millis}")
+fn generate_rule_id() -> RuleId {
+  RuleId::new_v7()
+}
+
+fn parse_rule_id(id: String) -> Result<RuleId, StatusCode> {
+  RuleId::try_from(id).map_err(|_| StatusCode::BAD_REQUEST)
 }
 
 fn apply_patch(rule: &mut Rule, patch: Value) -> Result<(), StatusCode> {
