@@ -1,20 +1,27 @@
 use rve_core::domain::{
   common::{RuleId, Score, Severity, TimestampMs},
   rule::{
-    Rule, RuleAction, RuleAudit, RuleEnforcement, RuleEvaluation, RuleMeta, RuleSchedule,
-    RuleState, RolloutPolicy, mode::RuleMode,
+    RolloutPolicy, Rule, RuleAction, RuleAudit, RuleEnforcement, RuleEvaluation, RuleMeta,
+    RuleSchedule, RuleState, mode::RuleMode,
   },
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use utoipa::IntoParams;
 use validator::{Validate, ValidationError, ValidationErrors, ValidationErrorsKind};
 
 use super::errors::{ApiError, ApiResult, ValidationIssue, ValidationReport};
 use super::logic_validation::validate_rule_evaluation;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct Pagination {
+  /// Page number (1-based).
+  #[param(default = 1, minimum = 1)]
   pub page: Option<u32>,
+
+  /// Number of items per page. Max 100.
+  #[param(default = 20, minimum = 1, maximum = 100)]
   pub limit: Option<u32>,
 }
 
@@ -33,7 +40,7 @@ pub struct PaginationMeta {
 
 #[derive(Debug, Deserialize, Validate)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct RuleDocumentInput {
+pub struct RuleDocumentInput {
   #[serde(default)]
   pub id: Option<RuleId>,
   #[validate(nested)]
@@ -275,11 +282,7 @@ fn collect_validation_messages(
   out: &mut Vec<ValidationIssue>,
 ) {
   for (field, kind) in errors.errors() {
-    let path = if prefix.is_empty() {
-      field.to_string()
-    } else {
-      format!("{prefix}.{field}")
-    };
+    let path = if prefix.is_empty() { field.to_string() } else { format!("{prefix}.{field}") };
 
     match kind {
       ValidationErrorsKind::Field(field_errors) => {

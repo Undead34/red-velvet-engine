@@ -1,18 +1,16 @@
 use axum::{
   Json,
+  extract::rejection::JsonRejection,
   http::StatusCode,
   response::{IntoResponse, Response},
 };
 use rve_core::{domain::common::RuleId, ports::RuleRepositoryError};
 use serde::Serialize;
-use tracing::error;
 
-use crate::http::state::EngineSyncError;
-
-pub(crate) type ApiResult<T> = Result<T, ApiError>;
+pub type ApiResult<T> = Result<T, ApiError>;
 
 #[derive(Debug)]
-pub(crate) enum ApiError {
+pub enum ApiError {
   BadRequest(String),
   Unprocessable(ValidationReport),
   NotFound(String),
@@ -38,13 +36,13 @@ struct ErrorBody {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct ValidationIssue {
+pub struct ValidationIssue {
   pub path: String,
   pub message: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct ValidationReport {
+pub struct ValidationReport {
   pub errors: Vec<ValidationIssue>,
   pub warnings: Vec<ValidationIssue>,
 }
@@ -83,6 +81,21 @@ pub(super) fn parse_rule_id(id: String) -> ApiResult<RuleId> {
   RuleId::try_from(id).map_err(|_| ApiError::BadRequest("id must be a valid UUID".to_owned()))
 }
 
+pub(super) fn map_json_rejection(error: JsonRejection) -> ApiError {
+  match error {
+    JsonRejection::MissingJsonContentType(_) => {
+      ApiError::BadRequest("content-type must be application/json".to_owned())
+    }
+    JsonRejection::JsonSyntaxError(_) | JsonRejection::JsonDataError(_) => {
+      ApiError::Unprocessable(ValidationReport {
+        errors: vec![ValidationIssue { path: "request".to_owned(), message: error.body_text() }],
+        warnings: Vec::new(),
+      })
+    }
+    _ => ApiError::BadRequest(error.body_text()),
+  }
+}
+
 pub(super) fn map_repository_error(error: RuleRepositoryError) -> ApiError {
   match error {
     RuleRepositoryError::AlreadyExists(id) => {
@@ -91,9 +104,4 @@ pub(super) fn map_repository_error(error: RuleRepositoryError) -> ApiError {
     RuleRepositoryError::NotFound(id) => ApiError::NotFound(format!("rule not found: {id}")),
     RuleRepositoryError::Storage(message) => ApiError::Internal(message),
   }
-}
-
-pub(super) fn map_engine_sync_error(error: EngineSyncError, operation: &str) -> ApiError {
-  error!(target: "BANNER", %error, %operation, "failed to refresh engine ruleset");
-  ApiError::Internal("failed to refresh engine ruleset".to_owned())
 }

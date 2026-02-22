@@ -3,9 +3,7 @@ use rve_core::domain::rule::RuleEvaluation;
 use serde_json::Value;
 
 use super::errors::{ApiError, ApiResult};
-
-const ALLOWED_ROOTS: [&str; 7] =
-  ["event", "payload", "context", "signals", "extensions", "transaction", "device"];
+use crate::http::api_v1::metadata::JSONLOGIC_ROOT_VARS;
 
 pub(super) fn validate_rule_evaluation(evaluation: &RuleEvaluation) -> ApiResult<()> {
   validate_vars("evaluation.condition", &evaluation.condition)?;
@@ -28,10 +26,13 @@ fn validate_vars(field: &'static str, value: &Value) -> ApiResult<()> {
 
   for path in vars {
     let root = path.split('.').next().unwrap_or_default();
-    if !ALLOWED_ROOTS.contains(&root) {
+    if !JSONLOGIC_ROOT_VARS.contains(&root) {
       return Err(ApiError::validation(
         field,
-        format!("var path '{path}' is not allowed; expected roots: {}", ALLOWED_ROOTS.join(", ")),
+        format!(
+          "var path '{path}' is not allowed; expected roots: {}",
+          JSONLOGIC_ROOT_VARS.join(", ")
+        ),
       ));
     }
   }

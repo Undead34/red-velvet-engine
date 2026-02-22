@@ -20,8 +20,9 @@
 ### Flujo de reglas
 
 1. **CRUD** (`/api/v1/rules`) opera sobre el `RuleRepositoryPort`. Hoy la implementación por defecto es in-memory pero cumple el contrato async (`list/get/all/create/replace/delete`).
-2. Después de cada mutación, `AppState::reload_rules()` vuelve a leer `repo.all()` y llama `RVEngine::publish_rules`. El motor recompila las expresiones JSONLogic y las intercambia mediante `ArcSwap`, sin bloquear peticiones en vuelo.
-3. El modelo expuesto por la API es idéntico al de `rve-core`: `Rule`, `RuleMeta`, `RuleSchedule`, etc. No hay DTO divergentes.
+2. La recarga del motor es explícita vía `POST /api/v1/engine/reload`: `AppState::reload_rules()` vuelve a leer `repo.all()` y llama `RVEngine::publish_rules`.
+3. Las mutaciones (`POST/PUT/PATCH/DELETE`) persisten reglas en repositorio, pero no recargan automáticamente el motor.
+4. El modelo expuesto por la API es idéntico al de `rve-core`: `Rule`, `RuleMeta`, `RuleSchedule`, etc. No hay DTO divergentes.
 
 ### Flujo de decisiones
 

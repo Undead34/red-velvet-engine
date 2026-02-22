@@ -28,3 +28,4 @@ redis = { version = "1.0.3", features = ["tokio-comp"] }
 datalogic-rs = { workspace = true }
 tower-http = { version = "0.5.2", features = ["cors"] }
 validator = { version = "0.20.0", features = ["derive"] }
+utoipa = { version = "5.4.0", features = ["axum_extras", "chrono", "uuid"] }

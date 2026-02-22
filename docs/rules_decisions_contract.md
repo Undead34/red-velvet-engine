@@ -2,6 +2,39 @@
 
 Este documento describe el payload oficial que expone la API `rve` para administrar reglas de fraude (`/api/v1/rules`) y para solicitar decisiones en línea (`/api/v1/decisions`). Los campos y tipos referencian las estructuras del crate `rve-core`.
 
+### Estado actual vs objetivo (2026-02-20)
+
+#### Cumplido
+- Backend como fuente de verdad para validación crítica de reglas.
+- Endpoints base disponibles: `GET /health`, CRUD de `rules`, `POST /api/v1/decisions`.
+- Endpoints de metadata disponibles:
+  - `GET /api/v1/metadata/fields`
+  - `GET /api/v1/metadata/contract`
+- Validación estricta server-side en mutaciones de reglas:
+  - `meta.name` no vacío,
+  - `meta.version` semver,
+  - `state.mode` enum válido,
+  - `rollout.percent` en rango,
+  - `enforcement.score_impact` en rango,
+  - validación de JSONLogic (compilación + roots permitidos).
+- Errores de validación machine-readable con `422` y reporte estructurado (`errors[]`, `warnings[]`).
+
+#### Parcial
+- `GET /api/v1/rules` soporta `page` y `limit`; falta `sort` y `q`.
+- Concurrencia optimista documentada pero no implementada (`ETag`/`If-Match` o control por versión).
+- Auditoría se valida en estructura de payload, pero aún no está centralizada por política de actor/header.
+- Shape de error tiene `path` + `message`; faltan campos enriquecidos por issue (`code`, `expected`, `actual`).
+
+#### Pendiente prioritario
+1. `POST /api/v1/rules/validate` (validar sin persistir) para UX del builder.
+2. Concurrencia optimista con `409` en conflictos de edición.
+3. Homogeneizar envelope de éxito/error y agregar `request_id` para trazabilidad.
+4. Alinear salida de decisions con contrato ideal completo (`score_delta`, `tags`, metadata consistente).
+
+#### No prioritario por ahora
+- Idempotencia completa en decisions por `event.header.event_id`.
+- Búsqueda/orden avanzado en reglas (`sort` complejo, filtros extensos) antes de cerrar validación + concurrencia.
+
 ### Objeto `Rule`
 
 ```json
@@ -86,11 +119,15 @@ Este documento describe el payload oficial que expone la API `rve` para administ
 
 6. `DELETE /api/v1/rules/{id}`
    - Elimina la regla del repositorio activo. Al no existir soft delete todavía, cualquier bandera (`state.mode`) debe gestionarse vía `PATCH`.
-   - Tras eliminar, el motor recompila automáticamente la lista de reglas para que la decisión refleje el estado más reciente.
+
+7. `POST /api/v1/engine/reload`
+   - Recarga explícitamente reglas desde repositorio hacia el motor (`RVEngine::publish_rules`).
+   - Recomendado ejecutar después de cualquier mutación de reglas (`POST/PUT/PATCH/DELETE`) para aplicar cambios en decisiones.
+   - Respuesta: `200` con `{ "status": "ok", "message": "engine rules reloaded" }`.
 
 ### Contrato de Decisiones (`/api/v1/decisions`)
 
-El endpoint ya se encuentra disponible y utiliza el motor interno (`RVEngine`) con JSONLogic compilado. Acepta el `Event` completo y produce un `EngineResult` enriquecido.
+El endpoint está temporalmente en modo esqueleto. Acepta el `Event` completo para mantener compatibilidad de contrato, pero no ejecuta evaluación y retorna `501`.
 
 #### Request
 
@@ -130,41 +167,21 @@ El endpoint ya se encuentra disponible y utiliza el motor interno (`RVEngine`) c
 }
 ```
 
-#### Response
+#### Response actual
 
 ```json
 {
-  "decision": {
-    "score": 42.5,
-    "hits": [
-      {
-        "rule_id": "FRAUD-HV-UNTRUSTED-01",
-        "action": "review",
-        "severity": "high",
-        "score_delta": 8.5,
-        "explanation": "Monto > 5000 y device nuevo",
-        "tags": ["financial_fraud", "device_fingerprinting"]
-      }
-    ],
-    "metadata": {
-      "evaluated_rules": 128,
-      "latency_ms": 12,
-      "rollout_bucket": 73
-    }
-  }
+  "code": "NOT_IMPLEMENTED",
+  "message": "Decision API is currently a skeleton endpoint",
+  "validation": null
 }
 ```
 
-- `score`: suma de `RuleEnforcement.score_impact` (f32) de todas las reglas activas que dispararon.
-- `hits`: mantiene orden determinístico, incluye la delta aportada por la regla y los tags declarados para debugging.
-- `metadata.evaluated_rules`: cuántas reglas se procesaron en la ventana y bucket actual.
-- `metadata.rollout_bucket`: entero 0-99 calculado a partir del evento (se comparte con `RolloutPolicy`).
-- `metadata.latency_ms`: tiempo total de la solicitud (medido en la capa HTTP).
+- La respuesta de decisión enriquecida (`score`, `hits`, `metadata`) queda diferida hasta reactivar la implementación.
 
 #### Errores
 - `400`: payload inválido (schema, campos obligatorios).
-- `409`: reservado para idempotencia (aún no implementado).
-- `500`: error interno en la compilación/evaluación de reglas (se loguea y se debe revisar la regla involucrada).
+- `501`: endpoint en modo esqueleto / no implementado.
 
 ### Auditoría y Versionado
 - Cada mutación debería actualizar `state.audit.updated_at_ms`/`updated_by`. Aún no se aplican validaciones server-side, por lo que el cliente debe enviar estos campos.

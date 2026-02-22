@@ -1,182 +1,283 @@
-## Guía rápida para Frontend / Integraciones
+## API Frontend Guide (v1)
 
-Este documento resume los endpoints disponibles y los payloads mínimos necesarios desde una app web o herramienta interna.
+Esta guía está pensada para el frontend que construye/edita reglas y consulta decisiones.
 
-### Healthcheck
-- `GET /health` → `{ "status": "ok" }`
-- Use para comprobar que el binario está vivo antes de mostrar UI.
+### Base
+- Health: `GET /health`
+- OpenAPI: `GET /api-docs/openapi.json`
+- API v1 base: `/api/v1`
 
-### Listar reglas
-- `GET /api/v1/rules?page=1&limit=20`
-- Respuesta JSON **exacta**:
-  ```json
-  {
-    "data": [
-      {
-        "id": "FRAUD-HV-UNTRUSTED-01",
-        "meta": {
-          "name": "High Value on Untrusted Device",
-          "description": "Texto opcional",
-          "version": "1.0.0",
-          "autor": "Analyst",
-          "tags": ["device", "high_value"]
-        },
-        "state": {
-          "mode": "active",
-          "audit": {
-            "created_at_ms": 1700000000000,
-            "updated_at_ms": 1701000000000,
-            "created_by": "User",
-            "updated_by": "Reviewer"
-          }
-        },
-        "schedule": {
-          "active_from_ms": 1700000000000,
-          "active_until_ms": null
-        },
-        "rollout": { "percent": 100 },
-        "evaluation": {
-          "condition": true,
-          "logic": {
-            "and": [
-              { ">": [{ "var": "transaction.amount" }, 5000] },
-              { "<": [{ "var": "device.trust_score" }, 0.4] }
-            ]
-          }
-        },
-        "enforcement": {
-          "score_impact": 8.5,
-          "action": "review",
-          "severity": "high",
-          "tags": ["financial_fraud"],
-          "cooldown_ms": 600000
-        }
-      }
+### Convenciones de respuesta
+
+#### Éxito
+- Listas: `{ "data": [...], "pagination": { ... } }`
+- Recursos únicos: JSON del recurso.
+
+#### Error
+- Errores de validación de reglas: `422`
+- Shape:
+
+```json
+{
+  "code": "validation_failed",
+  "message": "request validation failed",
+  "validation": {
+    "errors": [
+      { "path": "rollout.percent", "message": "range" }
     ],
-    "pagination": {
-      "page": 1,
-      "limit": 20,
-      "total": 2
-    }
+    "warnings": []
   }
-  ```
+}
+```
 
-### Crear / editar regla
-- `POST /api/v1/rules` con un `Rule` completo (sin `id` → el backend lo genera `FRAUD-AUTO-*`).
-- `PUT /api/v1/rules/{id}` reemplaza toda la regla.
-- `PATCH /api/v1/rules/{id}` se usa para toggles rápidos:
-  ```json
-  {
-    "state": { "mode": "paused" },
-    "rollout": { "percent": 25 }
-  }
-  ```
-- Después de cualquier modificación, la UI puede volver a `GET /api/v1/rules/{id}` para confirmar que el motor recargó la regla (los endpoints responden con el cuerpo actualizado).
+### 1) Health
 
-### Eliminar regla
-- `DELETE /api/v1/rules/{id}` remueve la regla definitivamente.
-- Si se quiere un “soft delete”, primero enviar `PATCH` con `state.mode = "draft"` y luego decidir si se elimina.
+`GET /health`
 
-- ### Solicitar decisión
-- `POST /api/v1/decisions`
-  ```json
-  {
-    "event": {
-      "header": {
-        "timestamp": "2025-02-01T03:04:05Z",
-        "source": "checkout",
-        "event_id": "evt_123",
-        "instrument": "card",
-        "channel": "web"
+Respuesta:
+
+```json
+{ "status": "ok" }
+```
+
+### 2) Rules
+
+Nota operativa:
+- Las mutaciones de reglas (`POST/PUT/PATCH/DELETE`) actualizan repositorio, pero no recargan el motor automáticamente.
+- Para aplicar cambios al motor en runtime, ejecutar `POST /api/v1/engine/reload`.
+
+#### Listar reglas
+`GET /api/v1/rules?page=1&limit=20`
+
+Respuesta:
+
+```json
+{
+  "data": [
+    {
+      "id": "01952031-1a77-7f0c-9f3c-bfd27d450001",
+      "meta": {
+        "code": "FRAUD-HV-UNTRUSTED-01",
+        "name": "High Value on Untrusted Device",
+        "description": "...",
+        "version": "1.0.0",
+        "autor": "Analista",
+        "tags": ["high_value", "device"]
       },
-      "context": {
-        "geo": { "country": "US" },
-        "net": { "source_ip": "1.2.3.4" },
-        "env": {},
-        "fin": {
-          "first_seen_at": 1699999999000,
-          "last_seen_at": 1700001111000,
-          "last_declined_at": null,
-          "total_successful_txns": 42,
-          "total_declined_txns": 1,
-          "total_amount_spent": 123456,
-          "max_ticket_ever": 100000,
-          "consecutive_failed_logins": 0,
-          "consecutive_declines": 0,
-          "current_hour_count": 5,
-          "current_hour_amount": 70000,
-          "current_day_count": 12,
-          "current_day_amount": 300000,
-          "known_ips": ["1.2.3.4"],
-          "known_devices": ["device-123"]
+      "state": {
+        "mode": "active",
+        "audit": {
+          "created_at_ms": 1700000000000,
+          "updated_at_ms": 1700000100000,
+          "created_by": "alice",
+          "updated_by": "alice"
         }
       },
-      "signals": { "flags": {} },
-      "payload": {
-        "money": { "value": 7500, "ccy": "USD" },
-        "parties": {
-          "originator": {
-            "entity_type": "individual",
-            "acct": "cust_01",
-            "country": "US",
-            "bank": "bank_123",
-            "kyc": "tier_2",
-            "watchlist": "no",
-            "sanctions_score": null
-          },
-          "beneficiary": {
-            "entity_type": "business",
-            "acct": "vendor_01",
-            "country": "MX"
-          }
+      "schedule": {
+        "active_from_ms": 1700000000000,
+        "active_until_ms": null
+      },
+      "rollout": { "percent": 100 },
+      "evaluation": {
+        "condition": true,
+        "logic": { ">": [{ "var": "payload.money.value" }, 5000] }
+      },
+      "enforcement": {
+        "score_impact": 8.5,
+        "action": "review",
+        "severity": "high",
+        "tags": ["financial_fraud"],
+        "cooldown_ms": 600000
+      }
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 2
+  }
+}
+```
+
+#### Crear regla
+`POST /api/v1/rules`
+
+Body (resource completo):
+
+```json
+{
+  "meta": {
+    "code": "RL01",
+    "name": "Rule Name",
+    "description": "optional",
+    "version": "1.0.0",
+    "autor": "RiskOps",
+    "tags": ["payments"]
+  },
+  "state": {
+    "mode": "staged",
+    "audit": {
+      "created_at_ms": 1730000000000,
+      "updated_at_ms": 1730000000000,
+      "created_by": "alice",
+      "updated_by": "alice"
+    }
+  },
+  "schedule": {
+    "active_from_ms": 1730000000000,
+    "active_until_ms": 1731000000000
+  },
+  "rollout": { "percent": 50 },
+  "evaluation": {
+    "condition": true,
+    "logic": { ">": [{ "var": "payload.money.value" }, 1000] }
+  },
+  "enforcement": {
+    "score_impact": 6.5,
+    "action": "review",
+    "severity": "high",
+    "tags": ["financial_fraud"],
+    "cooldown_ms": 60000
+  }
+}
+```
+
+Validaciones críticas (server-side):
+- `meta.name` no vacío.
+- `meta.version` semver.
+- `state.mode` enum válido (`staged|active|suspended|deactivated`).
+- `rollout.percent` `0..100`.
+- `enforcement.score_impact` `1.0..10.0`.
+- `schedule.active_until_ms > active_from_ms` cuando ambos existen.
+- JSONLogic compilable + roots permitidos.
+
+#### Obtener regla
+`GET /api/v1/rules/{id}`
+
+#### Reemplazar regla
+`PUT /api/v1/rules/{id}`
+
+Mismo contrato que `POST`.
+
+#### Patch de regla
+`PATCH /api/v1/rules/{id}`
+
+Notas:
+- Solo soporta estos campos: `state.mode`, `state.audit.updated_by`, `state.audit.updated_at_ms`, `rollout.percent`, `schedule.active_from_ms`, `schedule.active_until_ms`.
+- Si el body está vacío, no tiene cambios aplicables o incluye campos no patchables, retorna `422`.
+
+Ejemplo:
+
+```json
+{
+  "state": {
+    "mode": "suspended",
+    "audit": {
+      "updated_by": "reviewer",
+      "updated_at_ms": 1730000005000
+    }
+  },
+  "rollout": { "percent": 25 }
+}
+```
+
+#### Eliminar regla
+`DELETE /api/v1/rules/{id}`
+
+Semántica:
+- `204` si elimina correctamente.
+- `404` si la regla ya no existe.
+
+### 3) Engine
+
+#### Recargar reglas en el motor
+`POST /api/v1/engine/reload`
+
+Respuesta:
+
+```json
+{
+  "status": "ok",
+  "message": "engine rules reloaded"
+}
+```
+
+### 4) Decisions
+
+`POST /api/v1/decisions`
+
+Estado actual: endpoint en esqueleto. Acepta el payload base para mantener contrato, pero responde `501 Not Implemented`.
+
+Request (shape esperado):
+
+```json
+{
+  "event": {
+    "header": {
+      "timestamp": "2026-02-20T14:23:11Z",
+      "source": "checkout",
+      "event_id": "01952031-1a77-7f0c-9f3c-bfd27d451111",
+      "instrument": "card",
+      "channel": "web"
+    },
+    "context": { "geo": {}, "net": {}, "env": {}, "fin": {} },
+    "signals": { "flags": {} },
+    "payload": {
+      "money": { "value": 7800.5, "ccy": "EUR" },
+      "parties": {
+        "originator": {
+          "entity_type": "individual",
+          "acct": "cust_102938",
+          "country": "ES",
+          "kyc": "tier_2",
+          "watchlist": "no"
         },
-        "extensions": {
-          "device": { "trust_score": 0.33 },
-          "transaction": { "amount": 7500 }
+        "beneficiary": {
+          "entity_type": "business",
+          "acct": "merchant_7744",
+          "country": "NL",
+          "watchlist": "no"
         }
+      },
+      "extensions": {
+        "device": { "trust_score": 0.31 },
+        "transaction": { "amount": 7800.5 }
       }
     }
   }
-  ```
-- Respuesta **literal**:
-  ```json
-  {
-    "decision": {
-      "score": 42.5,
-      "hits": [
-        {
-          "rule_id": "FRAUD-HV-UNTRUSTED-01",
-          "action": "review",
-          "severity": "high",
-          "score_delta": 8.5,
-          "explanation": "Monto > 5000 y device nuevo",
-          "tags": ["financial_fraud"]
-        }
-      ],
-      "metadata": {
-        "evaluated_rules": 128,
-        "latency_ms": 12,
-        "rollout_bucket": 73
-      }
-    }
-  }
-  ```
-- Tips UI: mostrar `score` total y los hits como tarjetas; `rollout_bucket` sirve para debugging, no es necesario en la UI final.
+}
+```
 
-### Estados importantes
-- `state.mode` controla si la regla participa (`active`) o queda pausada (`paused`).
-- `rollout.percent` permite lanzar gradualmente (p. ej. 10% de tráfico) sin duplicar reglas.
-- `schedule.active_from_ms/active_until_ms` (en milisegundos UTC) habilitan ventanas automáticas.
-- `schedule.active_from_ms/active_until_ms` (en milisegundos UTC) habilitan ventanas automáticas.
+Response actual:
 
-### Referencia completa de JSON
-- Este archivo contiene ejemplos **completos** para que frontend pueda copiar/pegar estructuras válidas.
-- Si se requiere descripción campo por campo, entregar también `docs/rules_decisions_contract.md` (describe cada propiedad y sus rangos permitidos) como parte del paquete de documentación para equipos externos.
+```json
+{
+  "code": "NOT_IMPLEMENTED",
+  "message": "Decision API is currently a skeleton endpoint",
+  "validation": null
+}
+```
 
-### Errores comunes
-- `400` → JSON mal formado / campos faltantes.
-- `404` → `rule_id` inexistente.
-- `409` → creación de regla con `id` duplicado.
-- `500` → error interno; revisar logs (`target: BANNER`) y notificar al equipo backend.
+### 5) Metadata para Builder
 
-Mantén esta guía cerca del equipo de diseño/frontend para asegurar que las pantallas reflejen el estado real del motor.
+#### Campos disponibles
+`GET /api/v1/metadata/fields`
+
+Uso frontend:
+- construir selector de campos.
+- limitar operadores según `allowed_operators`.
+- si hay `allowed_values`, renderizar select.
+- mostrar `description` y `examples` como ayuda contextual.
+
+#### Contrato runtime
+`GET /api/v1/metadata/contract`
+
+Uso frontend:
+- validar enums locales contra backend.
+- detectar cambios de contrato por versión.
+- habilitar/deshabilitar features por capacidad real.
+
+### Recomendación de integración
+- No hardcodear enums ni paths en frontend.
+- Consumir `metadata/*` al iniciar app y cachear.
+- Usar `openapi.json` para generar tipos de cliente y evitar drift.

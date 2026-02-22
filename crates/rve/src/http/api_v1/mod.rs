@@ -1,5 +1,7 @@
-mod decisions;
-mod rules;
+pub mod decisions;
+pub mod engine;
+pub mod metadata;
+pub mod rules;
 
 use axum::{
   Router,
@@ -18,5 +20,8 @@ pub fn router() -> Router<AppState> {
         .patch(rules::patch_rule)
         .delete(rules::delete_rule),
     )
+    .route("/metadata/fields", get(metadata::fields))
+    .route("/metadata/contract", get(metadata::contract))
     .route("/decisions", post(decisions::create_decision))
+    .route("/engine/reload", post(engine::reload))
 }

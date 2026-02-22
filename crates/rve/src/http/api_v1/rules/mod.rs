@@ -1,5 +1,5 @@
 mod errors;
-mod handlers;
+pub mod handlers;
 mod logic_validation;
 mod patch;
 mod types;
