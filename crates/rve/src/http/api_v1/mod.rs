@@ -22,6 +22,7 @@ pub fn router() -> Router<AppState> {
     )
     .route("/metadata/fields", get(metadata::fields))
     .route("/metadata/contract", get(metadata::contract))
+    .route("/engine/status", get(engine::status))
     .route("/decisions", post(decisions::create_decision))
     .route("/engine/reload", post(engine::reload))
 }

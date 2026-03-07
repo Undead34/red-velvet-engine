@@ -1,24 +1,22 @@
 use axum::{
   Json,
   extract::{Path, Query, State, rejection::JsonRejection},
-  http::StatusCode,
+  http::{HeaderMap, StatusCode},
   response::IntoResponse,
 };
-use rve_core::domain::rule::Rule;
 use serde_json::Value;
 use tracing::warn;
 
 use crate::http::state::AppState;
 
 use super::{
-  errors::{
-    ApiError, ApiResult, map_json_rejection, map_repository_error, parse_rule_id,
-  },
+  errors::{ApiError, ApiResult, map_json_rejection, map_repository_error, parse_rule_id},
   patch::apply_patch,
   types::{
     Pagination, PaginationMeta, RuleDocumentInput, RuleListResponse, collect_rule_warnings,
     validate_rule,
   },
+  versioning::{assert_if_match, response_version_headers, rule_version},
 };
 
 /// List rules
@@ -52,7 +50,7 @@ pub async fn list_rules(
 /// Create a new rule
 ///
 /// Parses and validates the provided payload, persists the new rule in the repository,
-  /// The engine is not reloaded automatically; trigger `/api/v1/engine/reload` explicitly.
+/// The engine is not reloaded automatically; trigger `/api/v1/engine/reload` explicitly.
 /// Non-fatal validation warnings are logged but will not prevent creation.
 #[utoipa::path(
   post,
@@ -81,8 +79,10 @@ pub async fn create_rule(
   }
 
   let created = state.rule_repo.create(rule).await.map_err(map_repository_error)?;
+  let version = rule_version(&created)?;
+  let headers = response_version_headers(&version)?;
 
-  Ok((StatusCode::CREATED, Json(created)))
+  Ok((StatusCode::CREATED, headers, Json(created)))
 }
 
 /// Get a rule by ID
@@ -106,16 +106,20 @@ pub async fn create_rule(
 pub async fn get_rule(
   State(state): State<AppState>,
   Path(id): Path<String>,
-) -> ApiResult<Json<Rule>> {
+) -> ApiResult<impl IntoResponse> {
   let id = parse_rule_id(id)?;
 
-  state
+  let rule = state
     .rule_repo
     .get(&id)
     .await
     .map_err(map_repository_error)?
-    .map(Json)
-    .ok_or_else(|| ApiError::NotFound("rule not found".to_owned()))
+    .ok_or_else(|| ApiError::NotFound("rule not found".to_owned()))?;
+
+  let version = rule_version(&rule)?;
+  let headers = response_version_headers(&version)?;
+
+  Ok((headers, Json(rule)))
 }
 
 /// Replace an existing rule
@@ -138,6 +142,7 @@ pub async fn get_rule(
   responses(
     (status = 200, description = "Rule successfully replaced", body = crate::http::openapi::RuleDoc),
     (status = 400, description = "Invalid rule ID format provided", body = crate::http::openapi::ErrorResponse),
+    (status = 409, description = "Version conflict when If-Match does not match current rule", body = crate::http::openapi::ErrorResponse),
     (status = 404, description = "Rule not found", body = crate::http::openapi::ErrorResponse),
     (status = 422, description = "Validation failed for the provided payload", body = crate::http::openapi::ErrorResponse),
     (status = 500, description = "Internal server error during repository update", body = crate::http::openapi::ErrorResponse)
@@ -145,11 +150,23 @@ pub async fn get_rule(
 )]
 pub async fn update_rule(
   State(state): State<AppState>,
+  headers: HeaderMap,
   Path(id): Path<String>,
   payload: Result<Json<RuleDocumentInput>, JsonRejection>,
-) -> ApiResult<Json<Rule>> {
+) -> ApiResult<impl IntoResponse> {
   let payload = payload.map_err(map_json_rejection)?.0;
   let id = parse_rule_id(id)?;
+
+  let current = state
+    .rule_repo
+    .get(&id)
+    .await
+    .map_err(map_repository_error)?
+    .ok_or_else(|| ApiError::NotFound("rule not found".to_owned()))?;
+
+  let current_version = rule_version(&current)?;
+  assert_if_match(&headers, &current_version)?;
+
   let rule = payload.into_rule(Some(id))?;
 
   for warning in collect_rule_warnings(&rule) {
@@ -157,8 +174,10 @@ pub async fn update_rule(
   }
 
   let updated = state.rule_repo.replace(rule).await.map_err(map_repository_error)?;
+  let version = rule_version(&updated)?;
+  let response_headers = response_version_headers(&version)?;
 
-  Ok(Json(updated))
+  Ok((response_headers, Json(updated)))
 }
 
 /// Delete a rule
@@ -175,15 +194,28 @@ pub async fn update_rule(
   responses(
     (status = 204, description = "Rule successfully deleted (no content returned)"),
     (status = 400, description = "Invalid rule ID format provided", body = crate::http::openapi::ErrorResponse),
+    (status = 409, description = "Version conflict when If-Match does not match current rule", body = crate::http::openapi::ErrorResponse),
     (status = 404, description = "Rule not found", body = crate::http::openapi::ErrorResponse),
     (status = 500, description = "Internal server error during repository deletion", body = crate::http::openapi::ErrorResponse)
   )
 )]
 pub async fn delete_rule(
   State(state): State<AppState>,
+  headers: HeaderMap,
   Path(id): Path<String>,
 ) -> ApiResult<StatusCode> {
   let id = parse_rule_id(id)?;
+
+  let current = state
+    .rule_repo
+    .get(&id)
+    .await
+    .map_err(map_repository_error)?
+    .ok_or_else(|| ApiError::NotFound("rule not found".to_owned()))?;
+
+  let current_version = rule_version(&current)?;
+  assert_if_match(&headers, &current_version)?;
+
   state.rule_repo.delete(&id).await.map_err(map_repository_error)?;
   Ok(StatusCode::NO_CONTENT)
 }
@@ -209,6 +241,7 @@ pub async fn delete_rule(
   responses(
     (status = 200, description = "Rule successfully patched", body = crate::http::openapi::RuleDoc),
     (status = 400, description = "Invalid rule ID format or malformed patch payload provided", body = crate::http::openapi::ErrorResponse),
+    (status = 409, description = "Version conflict when If-Match does not match current rule", body = crate::http::openapi::ErrorResponse),
     (status = 404, description = "Rule not found", body = crate::http::openapi::ErrorResponse),
     (status = 422, description = "Validation failed for the rule's final state after applying the patch", body = crate::http::openapi::ErrorResponse),
     (status = 500, description = "Internal server error during repository update", body = crate::http::openapi::ErrorResponse)
@@ -216,9 +249,10 @@ pub async fn delete_rule(
 )]
 pub async fn patch_rule(
   State(state): State<AppState>,
+  headers: HeaderMap,
   Path(id): Path<String>,
   payload: Result<Json<Value>, JsonRejection>,
-) -> ApiResult<Json<Rule>> {
+) -> ApiResult<impl IntoResponse> {
   let payload = payload.map_err(map_json_rejection)?.0;
   let id = parse_rule_id(id)?;
 
@@ -229,6 +263,9 @@ pub async fn patch_rule(
     .map_err(map_repository_error)?
     .ok_or_else(|| ApiError::NotFound("rule not found".to_owned()))?;
 
+  let current_version = rule_version(&rule)?;
+  assert_if_match(&headers, &current_version)?;
+
   apply_patch(&mut rule, payload)?;
   validate_rule(&rule)?;
 
@@ -237,6 +274,8 @@ pub async fn patch_rule(
   }
 
   let saved = state.rule_repo.replace(rule).await.map_err(map_repository_error)?;
+  let version = rule_version(&saved)?;
+  let response_headers = response_version_headers(&version)?;
 
-  Ok(Json(saved))
+  Ok((response_headers, Json(saved)))
 }

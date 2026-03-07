@@ -1,9 +1,9 @@
-pub mod mode;
 mod action;
 mod audit;
 mod enforcement;
 mod evaluation;
 mod meta;
+pub mod mode;
 mod rollout;
 mod rule;
 mod schedule;

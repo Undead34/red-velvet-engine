@@ -1020,6 +1020,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
+ "tower",
  "tower-http",
  "tracing",
  "tracing-subscriber",

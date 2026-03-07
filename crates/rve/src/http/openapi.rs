@@ -15,6 +15,7 @@ use utoipa::{OpenApi, ToSchema};
     crate::http::api_v1::rules::handlers::update_rule,
     crate::http::api_v1::rules::handlers::patch_rule,
     crate::http::api_v1::rules::handlers::delete_rule,
+    crate::http::api_v1::engine::status,
     crate::http::api_v1::engine::reload,
     crate::http::api_v1::decisions::create_decision,
     crate::http::api_v1::metadata::fields,
@@ -34,6 +35,7 @@ use utoipa::{OpenApi, ToSchema};
       RolloutPolicyDoc,
       RuleEvaluationDoc,
       RuleEnforcementDoc,
+      EngineStatusResponseDoc,
       ReloadResponseDoc,
       RuleListResponseDoc,
       PaginationMetaDoc,
@@ -161,6 +163,15 @@ pub struct RuleEnforcementDoc {
 pub struct ReloadResponseDoc {
   pub status: String,
   pub message: String,
+}
+
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct EngineStatusResponseDoc {
+  pub ruleset_version: u64,
+  pub loaded_rules: u32,
+  pub repository_rules: u32,
+  pub last_reload_at_ms: Option<u64>,
+  pub last_reload_error: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
