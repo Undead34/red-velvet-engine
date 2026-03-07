@@ -14,7 +14,7 @@ pub use codes::{CountryCode, Currency, KycLevel, LocaleTag, TimezoneName, UserAg
 pub use entity_type::EntityType;
 pub use flag::Flag;
 pub use identifiers::{AccountId, BankRef, DeviceId, EventId, RuleId, SessionId};
-pub use money::Money;
+pub use money::{Money, MoneyMinor};
 pub use score::Score;
 pub use severity::Severity;
 pub use timestamp_ms::TimestampMs;

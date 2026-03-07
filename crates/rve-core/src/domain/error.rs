@@ -1,5 +1,13 @@
 use thiserror::Error;
 
+use crate::domain::rule::{RulePolicyError, RuleRolloutError, RuleScheduleError, RuleStateError};
+
+/// Error boundary for the domain.
+///
+/// `DomainError` is the public aggregate error surface for use across domains
+/// and adapters. Sub-components expose more granular errors (`RulePolicyError`,
+/// `RuleStateError`, etc.), which are mapped into this type at aggregate
+/// boundaries.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum DomainError {
   #[error("invalid country code: {0}")]
@@ -32,6 +40,46 @@ pub enum DomainError {
   InvalidUserAgent(String),
   #[error("invalid rule id: {0}")]
   InvalidRuleId(String),
+  #[error("invalid rule expression: {0}")]
+  InvalidRuleExpression(String),
+  /// Consolidated rule-policy error used by the aggregate boundary.
+  #[error(transparent)]
+  RulePolicy(#[from] RulePolicyError),
+  #[deprecated(note = "legacy variant; prefer RulePolicy")]
+  #[error("invalid rule schedule: {0}")]
+  InvalidRuleSchedule(String),
+  #[deprecated(note = "legacy variant; prefer RulePolicy")]
+  #[error("invalid rule rollout: {0}")]
+  InvalidRuleRollout(String),
+  #[deprecated(note = "legacy variant; prefer RulePolicy")]
+  #[error("invalid rule audit: {0}")]
+  InvalidRuleAudit(String),
+  #[deprecated(note = "legacy variant; prefer RulePolicy")]
+  #[error("invalid rule state transition: {0}")]
+  InvalidRuleStateTransition(String),
+  #[deprecated(note = "legacy variant; prefer RulePolicy")]
+  #[error("invalid rule evaluation: {0}")]
+  InvalidRuleEvaluation(String),
+  #[error("invalid money amount: {0}")]
+  InvalidMoneyAmount(String),
   #[error("invalid timestamp (ms): {0}")]
   InvalidTimestampMs(u64),
+}
+
+impl From<RuleScheduleError> for DomainError {
+  fn from(error: RuleScheduleError) -> Self {
+    Self::RulePolicy(RulePolicyError::Schedule(error))
+  }
+}
+
+impl From<RuleRolloutError> for DomainError {
+  fn from(error: RuleRolloutError) -> Self {
+    Self::RulePolicy(RulePolicyError::Rollout(error))
+  }
+}
+
+impl From<RuleStateError> for DomainError {
+  fn from(error: RuleStateError) -> Self {
+    Self::RulePolicy(error.into())
+  }
 }
