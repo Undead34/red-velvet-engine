@@ -91,10 +91,8 @@ fn rejects_invalid_state_in_rule_constructor() {
 
 #[test]
 fn rejects_invalid_schedule_in_rule_constructor() {
-  let invalid_schedule = RuleSchedule::new(
-    Some(TimestampMs::new(1_000).unwrap()),
-    Some(TimestampMs::new(900).unwrap()),
-  );
+  let invalid_schedule =
+    RuleSchedule::new(Some(TimestampMs::new(1_000).unwrap()), Some(TimestampMs::new(900).unwrap()));
   assert!(invalid_schedule.is_err());
 
   let invalid_policy = RulePolicy {

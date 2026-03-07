@@ -30,16 +30,16 @@ pub(super) fn apply_patch(rule: &mut Rule, patch: Value) -> ApiResult<()> {
       }
     }
 
-      if let Some(mode_value) = state.get("mode") {
-        let mode: rve_core::domain::rule::mode::RuleMode =
-          parse_patch_value("state.mode", mode_value)?;
+    if let Some(mode_value) = state.get("mode") {
+      let mode: rve_core::domain::rule::mode::RuleMode =
+        parse_patch_value("state.mode", mode_value)?;
 
-        next_policy
-          .state
-          .transition_to(mode)
-          .map_err(|error| ApiError::validation("state.mode", error.to_string()))?;
-        changed = true;
-      }
+      next_policy
+        .state
+        .transition_to(mode)
+        .map_err(|error| ApiError::validation("state.mode", error.to_string()))?;
+      changed = true;
+    }
 
     if let Some(audit) = state.get("audit") {
       let audit = audit

@@ -1,4 +1,4 @@
-use axum::{extract::State, Json};
+use axum::{Json, extract::State};
 use rve_core::{domain::event::Event, services::engine::Decision};
 use serde::Deserialize;
 use serde_json::Value;
@@ -22,9 +22,8 @@ pub async fn create_decision(
   State(state): State<AppState>,
   Json(request): Json<DecisionRequest>,
 ) -> ApiResult<Json<Decision>> {
-  let event: Event = serde_json::from_value(request.event).map_err(|error| {
-    ApiError::validation("event", format!("invalid event payload: {error}"))
-  })?;
+  let event: Event = serde_json::from_value(request.event)
+    .map_err(|error| ApiError::validation("event", format!("invalid event payload: {error}")))?;
 
   let decision = state
     .engine

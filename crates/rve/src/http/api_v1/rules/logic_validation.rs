@@ -1,7 +1,7 @@
 use datalogic_rs::DataLogic;
 use rve_core::domain::{
-  rule::{RuleEvaluation, RuleExpression},
   DomainError,
+  rule::{RuleEvaluation, RuleExpression},
 };
 use serde_json::Value;
 

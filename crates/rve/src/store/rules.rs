@@ -6,7 +6,7 @@ use tokio::sync::RwLock;
 
 use rve_core::domain::{
   common::{RuleId, Score, Severity, TimestampMs},
-  rule::{mode::RuleMode, RuleExpression, *},
+  rule::{RuleExpression, mode::RuleMode, *},
 };
 use rve_core::ports::{RepositoryResult, RulePage, RuleRepositoryError, RuleRepositoryPort};
 use serde_json::json;

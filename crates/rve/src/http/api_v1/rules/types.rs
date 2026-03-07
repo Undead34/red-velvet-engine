@@ -1,11 +1,11 @@
 use rve_core::domain::{
+  DomainError,
   common::{RuleId, Score, Severity, TimestampMs},
   rule::{
-  Rule, RuleAction, RuleAudit, RuleDefinition, RuleDecision, RuleEnforcement, RuleEvaluation,
-    RuleIdentity, RuleExpression, RulePolicy,
-    RuleSchedule, RuleState, RolloutPolicy, mode::RuleMode,
+    RolloutPolicy, Rule, RuleAction, RuleAudit, RuleDecision, RuleDefinition, RuleEnforcement,
+    RuleEvaluation, RuleExpression, RuleIdentity, RulePolicy, RuleSchedule, RuleState,
+    mode::RuleMode,
   },
-  DomainError,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
@@ -261,7 +261,11 @@ impl RuleEnforcementInput {
 
 pub(super) fn validate_rule(rule: &Rule) -> ApiResult<()> {
   rule.policy().state().validate().map_err(|error| map_domain_error("state", error.into()))?;
-  rule.policy().schedule().validate().map_err(|error| map_domain_error("schedule", error.into()))?;
+  rule
+    .policy()
+    .schedule()
+    .validate()
+    .map_err(|error| map_domain_error("schedule", error.into()))?;
   rule.policy().rollout().validate().map_err(|error| map_domain_error("rollout", error.into()))?;
   validate_rule_evaluation(rule.evaluation())?;
   Ok(())

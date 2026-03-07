@@ -25,10 +25,10 @@ pub enum RuleScheduleError {
 /// Unbounded bounds (`None`) are treated as positive or negative infinity.
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct RuleSchedule {
-/// The inclusive start timestamp establishing execution eligibility.
+  /// The inclusive start timestamp establishing execution eligibility.
   pub active_from_ms: Option<TimestampMs>,
 
-/// The exclusive end timestamp ceasing execution eligibility.
+  /// The exclusive end timestamp ceasing execution eligibility.
   pub active_until_ms: Option<TimestampMs>,
 }
 

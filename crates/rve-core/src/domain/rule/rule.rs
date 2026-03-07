@@ -1,39 +1,44 @@
 use serde::{Deserialize, Serialize};
 
+use super::{RuleDecision, RuleDefinition, RuleIdentity, RuleMode, RulePolicy};
 use crate::domain::{DomainError, common::RuleId};
 
-use super::{RuleDecision, RuleDefinition, RuleIdentity, RuleMode, RulePolicy};
-
-/// A fraud detection rule.
+/// The central domain aggregate representing a fraud detection rule.
 ///
-/// `Rule` acts as the coordinator for the engine's core components. It ties
-/// together business metadata, execution constraints, evaluation logic, and
-/// the resulting system actions into a single, cohesive unit.
-/// The rule's constructor enforces validation boundaries on policy and
-/// definition so invalid rules cannot be instantiated.
+/// `Rule` acts as the primary coordinator for the engine's core components. It
+/// integrates business metadata, execution eligibility, evaluation logic, and
+/// deterministic outcomes into a single, cohesive unit.
+///
+/// This structure enforces strict validation boundaries; it is impossible to
+/// instantiate or mutate a `Rule` into an invalid operational state.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Rule {
   /// System-level unique identifier for storage and referencing.
   pub id: RuleId,
 
-  /// Human-readable identity, tracking codes, and organizational tags.
+  /// Descriptive identity, tracking codes, and organizational metadata.
   identity: RuleIdentity,
 
-  /// Deployment controls dictating execution eligibility (state, rollout, schedule).
+  /// Operational controls governing execution eligibility (lifecycle, rollout, schedule).
   policy: RulePolicy,
 
-  /// The logical expression evaluated against the incoming event payload.
+  /// The logical criteria evaluated against incoming event payloads.
   definition: RuleDefinition,
 
-  /// The actions and risk scoring applied upon a positive evaluation.
+  /// The prescribed actions and risk impact yielded upon a positive match.
   outcome: RuleDecision,
 }
 
 impl Rule {
-  /// Creates a validated rule aggregate.
+  /// Creates a new, validated `Rule` aggregate.
   ///
-  /// This is the rule-level constructor and the last line of defence for
-  /// invalid policy or definition payloads.
+  /// This constructor serves as the final validation boundary for the rule's
+  /// constituent components.
+  ///
+  /// # Errors
+  ///
+  /// Returns a [`DomainError`] if the provided [`RulePolicy`] or [`RuleDefinition`]
+  /// violate engine constraints.
   pub fn new(
     id: RuleId,
     identity: RuleIdentity,
@@ -47,69 +52,81 @@ impl Rule {
     Ok(Self { id, identity, policy, definition, outcome })
   }
 
-  /// Returns `true` when the policy allows execution at `now_ms` and for bucket.
+  /// Evaluates whether the rule is eligible for execution.
   ///
-  /// This method is the aggregate guard used by the engine before evaluating
-  /// the rule definition.
+  /// This is a high-level guard that checks the internal [`RulePolicy`] against
+  /// the current system time and the event's deterministic traffic bucket.
   pub fn is_executable(&self, now_ms: u64, bucket_0_99: u8) -> bool {
     self.policy.can_execute(now_ms, bucket_0_99)
   }
 
-  /// Moves the rule lifecycle mode forward/backward according to `RuleMode` rules.
+  /// Transitions the rule's operational mode.
   ///
-  /// Domain errors are returned as `DomainError`; in practice this is backed by
-  /// `RulePolicyError` when transition constraints fail.
+  /// # Errors
+  ///
+  /// Returns a [`DomainError`] if the requested transition violates the
+  /// state machine rules defined in [`RuleMode`].
   pub fn transition_to(&mut self, mode: RuleMode) -> Result<(), DomainError> {
     self.policy.transition_to(mode)?;
     Ok(())
   }
 
-  /// Replaces the current policy after validation.
+  /// Updates the rule's policy after performing validation.
   ///
-  /// This method is intentionally explicit so policy changes are always
-  /// validated at the aggregate boundary.
+  /// This method ensures that policy updates (e.g., changes in rollout or schedule)
+  /// satisfy all domain invariants before being applied.
   pub fn set_policy(&mut self, policy: RulePolicy) -> Result<(), DomainError> {
     policy.validate()?;
     self.policy = policy;
     Ok(())
   }
 
+  /// Returns a reference to the rule's identity metadata.
   pub fn identity(&self) -> &RuleIdentity {
     &self.identity
   }
 
+  /// Returns a reference to the rule's operational policy.
   pub fn policy(&self) -> &RulePolicy {
     &self.policy
   }
 
+  /// Returns a reference to the rule's logical definition.
   pub fn definition(&self) -> &RuleDefinition {
     &self.definition
   }
 
+  /// Returns a reference to the rule's decision output.
   pub fn outcome(&self) -> &RuleDecision {
     &self.outcome
   }
 
+  /// Returns a reference to the underlying operational state.
   pub fn state(&self) -> &super::RuleState {
     &self.policy.state
   }
 
+  /// Returns a reference to the rule's temporal schedule.
   pub fn schedule(&self) -> &super::RuleSchedule {
     &self.policy.schedule
   }
 
+  /// Returns a reference to the rule's rollout configuration.
   pub fn rollout(&self) -> &super::RolloutPolicy {
     &self.policy.rollout
   }
 
+  /// Returns a reference to the bipartite evaluation logic.
   pub fn evaluation(&self) -> &crate::domain::rule::RuleEvaluation {
     &self.definition.evaluation
   }
 
+  /// Returns a reference to the prescribed enforcement actions.
   pub fn enforcement(&self) -> &crate::domain::rule::RuleEnforcement {
     &self.outcome.enforcement
   }
 
+  /// Returns `true` if the rule is currently in the [`RuleMode::Active`] state.
   pub fn is_active_mode(&self) -> bool {
     self.policy.is_active_mode()
   }
