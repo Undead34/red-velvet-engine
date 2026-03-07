@@ -3,46 +3,42 @@ use serde::{Deserialize, Serialize};
 use super::expression::RuleExpression;
 use crate::domain::DomainError;
 
-/// The evaluation logic consisting of a guard condition and a primary logic expression.
+/// Pair of expressions used to evaluate a rule.
 ///
-/// `RuleEvaluation` defines a two-step execution flow designed for optimization.
-/// The engine first evaluates the `condition`; if it yields `false`, the execution
-/// short-circuits to avoid the computational cost of the `logic` expression.
+/// `condition` and `logic` are both validated expressions.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RuleEvaluation {
-  /// A lightweight guard expression evaluated as a pre-requisite.
+  /// Guard expression.
   pub condition: RuleExpression,
 
-  /// The primary domain logic executed only when the `condition` evaluates to `true`.
+  /// Main logic expression.
   pub logic: RuleExpression,
 }
 
 impl RuleEvaluation {
-  /// Creates a new `RuleEvaluation` and performs a static validation of its expressions.
+  /// Creates an evaluation and validates variable roots.
   ///
   /// # Errors
   ///
-  /// Returns a [`DomainError`] if either expression contains illegal variables or
-  /// violates engine-specific syntax constraints.
+  /// Returns [`DomainError`] if either expression has a disallowed `var` root.
   pub fn new(condition: RuleExpression, logic: RuleExpression) -> Result<Self, DomainError> {
     let this = Self { condition, logic };
     this.validate()?;
     Ok(this)
   }
 
-  /// Validates the variable access patterns for both the guard and the primary logic.
+  /// Validates variable roots for both expressions.
   ///
-  /// This ensures all referenced data paths are within the engine's allowed
-  /// root schemas (e.g., `event`, `payload`, `context`).
+  /// # Errors
+  ///
+  /// Returns [`DomainError`] if either expression has a disallowed `var` root.
   pub fn validate(&self) -> Result<(), DomainError> {
     self.condition.validate_vars()?;
     self.logic.validate_vars()?;
     Ok(())
   }
 
-  /// Consumes the evaluation, returning its constituent expressions.
-  ///
-  /// Returns a tuple containing `(condition, logic)`.
+  /// Consumes the value and returns `(condition, logic)`.
   pub fn into_parts(self) -> (RuleExpression, RuleExpression) {
     (self.condition, self.logic)
   }

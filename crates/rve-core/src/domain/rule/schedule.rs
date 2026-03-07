@@ -3,10 +3,10 @@ use thiserror::Error;
 
 use crate::domain::common::TimestampMs;
 
-/// The error type returned when a rule's temporal boundaries are invalid.
+/// Errors that can occur when validating [`RuleSchedule`].
 #[derive(Debug, Clone, Serialize, Deserialize, Error, PartialEq, Eq)]
 pub enum RuleScheduleError {
-  /// The end boundary chronologically precedes or equals the start boundary.
+  /// `active_until_ms` is less than or equal to `active_from_ms`.
   #[error(
     "invalid schedule window: active_until_ms ({until}) must be greater than active_from_ms ({from})"
   )]
@@ -18,11 +18,9 @@ pub enum RuleScheduleError {
   },
 }
 
-/// The temporal boundaries defining a rule's active operational window.
+/// Optional time window for rule execution.
 ///
-/// `RuleSchedule` establishes when a rule is eligible for engine evaluation.
-/// Bounded intervals are evaluated as half-open ranges `[from, until)`.
-/// Unbounded bounds (`None`) are treated as positive or negative infinity.
+/// The window is half-open: `[active_from_ms, active_until_ms)`.
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct RuleSchedule {
   /// The inclusive start timestamp establishing execution eligibility.
@@ -33,7 +31,7 @@ pub struct RuleSchedule {
 }
 
 impl RuleSchedule {
-  /// Evaluates if the provided timestamp falls within the schedule's boundaries.
+  /// Returns `true` if `now_ms` is inside the configured window.
   ///
   /// Returns `true` if `now_ms` is greater than or equal to `active_from_ms`
   /// and strictly less than `active_until_ms`.
@@ -54,15 +52,17 @@ impl RuleSchedule {
     true
   }
 
-  /// Alias for [`RuleSchedule::is_within_window`].
+  /// Alias for [`Self::is_within_window`].
   pub fn allows(&self, now_ms: u64) -> bool {
     self.is_within_window(now_ms)
   }
 
-  /// Validates the chronological integrity of the schedule's boundaries.
+  /// Validates schedule boundaries.
   ///
-  /// Returns a [`RuleScheduleError::InvalidWindow`] if both boundaries are present
-  /// and `active_until_ms` is less than or equal to `active_from_ms`.
+  /// # Errors
+  ///
+  /// Returns [`RuleScheduleError::InvalidWindow`] if both boundaries are set and
+  /// `active_until_ms <= active_from_ms`.
   pub fn validate(&self) -> Result<(), RuleScheduleError> {
     if let (Some(from), Some(until)) = (self.active_from_ms, self.active_until_ms)
       && until.as_u64() <= from.as_u64()
@@ -72,9 +72,11 @@ impl RuleSchedule {
     Ok(())
   }
 
-  /// Creates a new schedule after validating window consistency.
+  /// Creates a new schedule and validates it.
   ///
-  /// Returns a [`RuleScheduleError`] if the defined window is chronologically invalid.
+  /// # Errors
+  ///
+  /// Returns [`RuleScheduleError`] if boundaries are invalid.
   pub fn new(
     active_from_ms: Option<TimestampMs>,
     active_until_ms: Option<TimestampMs>,

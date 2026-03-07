@@ -3,14 +3,14 @@ use thiserror::Error;
 
 use super::{RuleAudit, mode::RuleMode};
 
-/// The error type returned when rule state operations or constraints fail.
+/// Errors that can occur when creating or mutating [`RuleState`].
 #[derive(Debug, Clone, Serialize, Deserialize, Error, PartialEq, Eq)]
 pub enum RuleStateError {
   /// The underlying audit trail failed validation.
   #[error("invalid rule audit: {0}")]
   Audit(#[from] super::audit::RuleAuditError),
 
-  /// The requested lifecycle mode transition violates the state machine's rules.
+  /// The requested lifecycle transition is not allowed.
   #[error("invalid rule state transition: cannot transition from {:?} to {:?}", from, to)]
   InvalidTransition {
     /// The current operational mode.
@@ -20,11 +20,7 @@ pub enum RuleStateError {
   },
 }
 
-/// The operational state and modification history of a rule.
-///
-/// `RuleState` encapsulates the current execution mode of the rule alongside the
-/// audit trail of its lifecycle changes. It governs valid state transitions and
-/// exposes the rule's fundamental eligibility for evaluation.
+/// Lifecycle state for a rule.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RuleState {
   /// The current lifecycle mode dictating execution behavior.
@@ -34,23 +30,27 @@ pub struct RuleState {
 }
 
 impl RuleState {
-  /// Creates a new `RuleState` and validates its components.
+  /// Creates a new state and validates its audit metadata.
   ///
-  /// Returns [`RuleStateError`] when the embedded audit trail is invalid.
+  /// # Errors
+  ///
+  /// Returns [`RuleStateError::Audit`] if `audit` is invalid.
   pub fn new(mode: RuleMode, audit: RuleAudit) -> Result<Self, RuleStateError> {
     let state = Self { mode, audit };
     state.validate()?;
     Ok(state)
   }
 
-  /// Validates the internal audit trail.
+  /// Validates the state.
+  ///
+  /// # Errors
+  ///
+  /// Returns [`RuleStateError::Audit`] if the embedded audit is invalid.
   pub fn validate(&self) -> Result<(), RuleStateError> {
     self.audit.validate().map_err(RuleStateError::Audit)
   }
 
-  /// Returns `true` when the operational mode allows evaluation.
-  ///
-  /// Current implementation delegates to [`RuleMode::is_executable`].
+  /// Returns `true` if the current mode allows evaluation.
   pub fn is_executable(&self) -> bool {
     self.mode.is_executable()
   }
@@ -60,21 +60,21 @@ impl RuleState {
     self.mode.can_transition_to(next)
   }
 
-  /// Returns `true` when the current mode is terminal.
-  /// Terminal mode implies the rule cannot be reactivated in normal operation.
+  /// Returns `true` if the current mode is terminal.
   pub fn is_terminal(&self) -> bool {
     self.mode.is_terminal()
   }
 
-  /// Returns `true` when the current mode is stable (`active`, `staged`, `suspended`).
+  /// Returns `true` if the current mode is stable.
   pub fn is_stable(&self) -> bool {
     self.mode.is_stable()
   }
 
-  /// Applies a state transition atomically.
+  /// Transitions to `next`.
   ///
-  /// Returns a [`RuleStateError::InvalidTransition`] if the requested transition
-  /// violates the defined state machine rules in [`RuleMode::can_transition_to`].
+  /// # Errors
+  ///
+  /// Returns [`RuleStateError::InvalidTransition`] if `next` is not allowed.
   pub fn transition_to(&mut self, next: RuleMode) -> Result<(), RuleStateError> {
     if !self.can_transition_to(next) {
       return Err(RuleStateError::InvalidTransition { from: self.mode, to: next });

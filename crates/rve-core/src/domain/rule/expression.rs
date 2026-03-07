@@ -3,24 +3,20 @@ use serde_json::Value;
 
 use crate::domain::DomainError;
 
-/// Maximum allowable depth for nested logical expressions to prevent stack overflow.
+/// Maximum nesting depth accepted by the validator.
 const MAX_EXPRESSION_DEPTH: usize = 20;
-/// Maximum length for arrays within an expression to prevent excessive iteration.
+/// Maximum array length accepted by the validator.
 const MAX_ARRAY_LEN: usize = 128;
-/// Maximum total number of nodes allowed in a single expression tree.
+/// Maximum number of object nodes accepted by the validator.
 const MAX_NODE_COUNT: usize = 1_024;
-/// Maximum character length for variable path strings.
+/// Maximum length for `var` paths.
 const MAX_STRING_VAR_LEN: usize = 512;
 
-/// Allowed root namespaces for variable resolution.
-///
-/// Expressions are restricted to these roots to ensure strict data sandboxing.
+/// Allowed root namespaces for `var` paths.
 pub const JSONLOGIC_ROOT_VARS: [&str; 7] =
   ["event", "payload", "context", "signals", "extensions", "transaction", "device"];
 
-/// Valid operators supported by the rule engine runtime.
-///
-/// This list is aligned with the `datalogic-rs` (v4.0.x) specification.
+/// Operators accepted by core static validation.
 pub const ALLOWED_OPERATORS: [&str; 61] = [
   "var",
   "val",
@@ -85,11 +81,7 @@ pub const ALLOWED_OPERATORS: [&str; 61] = [
   "??",
 ];
 
-/// A validated logical expression tree.
-///
-/// `RuleExpression` wraps a JSON-based abstract syntax tree (AST). Upon creation,
-/// the expression is statically analyzed to ensure it adheres to safety limits,
-/// uses only authorized operators, and accesses permitted data namespaces.
+/// A validated JSONLogic expression.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct RuleExpression {
@@ -97,12 +89,12 @@ pub struct RuleExpression {
 }
 
 impl RuleExpression {
-  /// Creates a new `RuleExpression` after performing deep structural validation.
+  /// Creates an expression after structural validation.
   ///
   /// # Errors
   ///
-  /// Returns a [`DomainError::InvalidRuleExpression`] if the AST exceeds depth/node limits
-  /// or contains unauthorized operators.
+  /// Returns [`DomainError::InvalidRuleExpression`] if the expression exceeds
+  /// configured limits or uses unsupported operators.
   pub fn new(value: Value) -> Result<Self, DomainError> {
     validate_expression(&value)?;
     Ok(Self { value })
@@ -118,17 +110,17 @@ impl RuleExpression {
     self.value
   }
 
-  /// Returns `true` if the given path starts with a permitted root namespace.
+  /// Returns `true` if `path` starts with an allowed root namespace.
   pub fn is_root_var(path: &str) -> bool {
     let root = path.split('.').next().unwrap_or_default();
     JSONLOGIC_ROOT_VARS.contains(&root)
   }
 
-  /// Performs a static analysis of all variable paths within the expression.
+  /// Validates all `var` paths in the expression.
   ///
   /// # Errors
   ///
-  /// Returns an error if any path references a root not defined in [`JSONLOGIC_ROOT_VARS`].
+  /// Returns an error if any `var` path has a disallowed root.
   pub fn validate_vars(&self) -> Result<(), DomainError> {
     let mut vars = Vec::new();
     collect_var_paths(&self.value, &mut vars);
@@ -144,19 +136,13 @@ impl RuleExpression {
   }
 }
 
-/// Recursively validates the AST structure against safety constraints.
+/// Validates the expression tree.
 fn validate_expression(value: &Value) -> Result<(), DomainError> {
   let mut nodes = 0usize;
   validate_node(value, 0, &mut nodes)
 }
 
-/// Validates a specific node within the expression tree.
-///
-/// Checks for:
-/// - Maximum recursion depth ([`MAX_EXPRESSION_DEPTH`]).
-/// - Total node count ([`MAX_NODE_COUNT`]).
-/// - Operator whitelist ([`ALLOWED_OPERATORS`]).
-/// - Variable path integrity.
+/// Validates a single node in the expression tree.
 fn validate_node(value: &Value, depth: usize, nodes: &mut usize) -> Result<(), DomainError> {
   if depth > MAX_EXPRESSION_DEPTH {
     return Err(DomainError::InvalidRuleExpression("expression exceeds max depth".to_owned()));
@@ -246,7 +232,7 @@ fn validate_node(value: &Value, depth: usize, nodes: &mut usize) -> Result<(), D
   }
 }
 
-/// Traverses the AST to collect all variable access paths.
+/// Collects all `var` paths from the expression tree.
 fn collect_var_paths<'a>(value: &'a Value, vars: &mut Vec<&'a str>) {
   match value {
     Value::Object(map) => {

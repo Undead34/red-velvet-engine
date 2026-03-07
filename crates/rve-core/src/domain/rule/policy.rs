@@ -3,29 +3,25 @@ use thiserror::Error;
 
 use super::{RolloutPolicy, RuleMode, RuleSchedule, RuleState};
 
-/// The error type returned when a rule's operational policy is invalid or violates constraints.
+/// Errors that can occur when validating or mutating [`RulePolicy`].
 #[derive(Debug, Clone, PartialEq, Eq, Error, Serialize, Deserialize)]
 pub enum RulePolicyError {
-  /// Operational state is invalid or a requested transition is forbidden.
+  /// State is invalid or a requested transition is forbidden.
   #[error("invalid rule state: {0}")]
   State(#[from] super::state::RuleStateError),
 
-  /// Temporal execution windows are invalid (`active_until_ms <= active_from_ms`).
+  /// Schedule boundaries are invalid.
   #[error("invalid rule schedule: {0}")]
   Schedule(#[from] super::schedule::RuleScheduleError),
 
-  /// Rollout percentage is outside the valid `[0, 100]` range.
+  /// Rollout percentage is outside `0..=100`.
   #[error("invalid rule rollout: {0}")]
   Rollout(#[from] super::rollout::RuleRolloutError),
 }
 
-/// Execution constraints and lifecycle configuration for a rule.
+/// Execution controls for a rule.
 ///
-/// `RulePolicy` is the policy boundary for `Rule` execution.
-/// It is the single source of truth for:
-/// - lifecycle state (`state`)
-/// - temporal window (`schedule`)
-/// - traffic gating (`rollout`).
+/// A policy combines lifecycle state, schedule window, and rollout percentage.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RulePolicy {
   /// The mutable operational state, including its current mode and audit history.
@@ -39,9 +35,11 @@ pub struct RulePolicy {
 }
 
 impl RulePolicy {
-  /// Constructs a new `RulePolicy` and validates its components.
+  /// Creates a policy and validates it.
   ///
-  /// Returns a [`RulePolicyError`] if the state, schedule, or rollout constraints are invalid.
+  /// # Errors
+  ///
+  /// Returns [`RulePolicyError`] if any component is invalid.
   pub fn new(
     state: RuleState,
     schedule: RuleSchedule,
@@ -52,7 +50,7 @@ impl RulePolicy {
     Ok(policy)
   }
 
-  /// Validates the internal state, schedule, and rollout configurations.
+  /// Validates all policy components.
   pub fn validate(&self) -> Result<(), RulePolicyError> {
     self.state.validate().map_err(RulePolicyError::State)?;
     self.schedule.validate().map_err(RulePolicyError::Schedule)?;
@@ -75,17 +73,16 @@ impl RulePolicy {
     &self.rollout
   }
 
-  /// Determines if the rule is strictly eligible for evaluation.
-  ///
-  /// A rule is executable only if its state permits execution, the `now_ms` timestamp falls
-  /// within its scheduled window, and the `bucket_0_99` value satisfies the rollout threshold.
+  /// Returns `true` if the rule can execute at `now_ms` for `bucket_0_99`.
   pub fn can_execute(&self, now_ms: u64, bucket_0_99: u8) -> bool {
     self.state.is_executable() && self.schedule.allows(now_ms) && self.rollout.allows(bucket_0_99)
   }
 
-  /// Mutates the rule's operational mode.
+  /// Transitions the policy mode.
   ///
-  /// Returns a [`RulePolicyError`] if the state transition is invalid.
+  /// # Errors
+  ///
+  /// Returns [`RulePolicyError::State`] if the transition is invalid.
   pub fn transition_to(&mut self, mode: RuleMode) -> Result<(), RulePolicyError> {
     self.state.transition_to(mode).map_err(RulePolicyError::from)
   }

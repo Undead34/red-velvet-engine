@@ -3,38 +3,34 @@ use serde::{Deserialize, Serialize};
 use super::RuleEvaluation;
 use crate::domain::DomainError;
 
-/// The logical core and evaluation criteria of a fraud rule.
-///
-/// `RuleDefinition` encapsulates the "If" component of a rule's logic. It houses
-/// the specific expressions and conditions that the engine evaluates against
-/// incoming event payloads to determine if a rule should trigger.
+/// Logical definition of a rule.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RuleDefinition {
-  /// The bipartite logic (condition and main expression) to be evaluated.
+  /// Expressions used for evaluation.
   pub evaluation: RuleEvaluation,
 }
 
 impl RuleDefinition {
-  /// Creates a new `RuleDefinition` after validating its evaluation logic.
+  /// Creates a definition and validates it.
   ///
   /// # Errors
   ///
-  /// Returns a [`DomainError`] if the underlying evaluation expressions are
-  /// syntactically invalid or violate engine constraints (e.g., restricted variables).
+  /// Returns [`DomainError`] if evaluation is invalid.
   pub fn new(evaluation: RuleEvaluation) -> Result<Self, DomainError> {
     evaluation.validate()?;
     Ok(Self { evaluation })
   }
 
-  /// Validates the integrity of the internal evaluation logic.
+  /// Validates the contained evaluation.
   ///
-  /// This ensures that both the guard condition and the main logic are
-  /// executable by the rule engine.
+  /// # Errors
+  ///
+  /// Returns [`DomainError`] if evaluation is invalid.
   pub fn validate(&self) -> Result<(), DomainError> {
     self.evaluation.validate()
   }
 
-  /// Returns a reference to the internal [`RuleEvaluation`].
+  /// Returns the inner evaluation.
   pub fn evaluation(&self) -> &RuleEvaluation {
     &self.evaluation
   }

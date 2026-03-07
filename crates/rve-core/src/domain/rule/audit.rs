@@ -3,10 +3,10 @@ use serde::{Deserialize, Serialize};
 use crate::domain::common::TimestampMs;
 use thiserror::Error;
 
-/// The error type returned when rule audit metadata validation fails.
+/// Errors that can occur when validating [`RuleAudit`].
 #[derive(Debug, Clone, Serialize, Deserialize, Error, PartialEq, Eq)]
 pub enum RuleAuditError {
-  /// The update timestamp is earlier than the creation timestamp.
+  /// `updated_at_ms` is earlier than `created_at_ms`.
   #[error(
     "audit timestamps invalid: updated_at_ms ({updated_at_ms}) must be >= created_at_ms ({created_at_ms})"
   )]
@@ -18,10 +18,7 @@ pub enum RuleAuditError {
   },
 }
 
-/// Chronological tracking and attribution metadata for a rule.
-///
-/// `RuleAudit` maintains the absolute timestamps and optional identities
-/// associated with creation and subsequent modifications.
+/// Audit metadata for a rule.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RuleAudit {
   /// The absolute timestamp of creation.
@@ -38,10 +35,12 @@ pub struct RuleAudit {
 }
 
 impl RuleAudit {
-  /// Validates the chronological invariants of the audit trail.
+  /// Validates audit chronology.
   ///
-  /// Returns [`RuleAuditError::InvalidTimestampOrder`] when the timeline is
-  /// invalid (`updated_at_ms < created_at_ms`).
+  /// # Errors
+  ///
+  /// Returns [`RuleAuditError::InvalidTimestampOrder`] if
+  /// `updated_at_ms < created_at_ms`.
   pub fn validate(&self) -> Result<(), RuleAuditError> {
     if self.updated_at_ms.as_u64() < self.created_at_ms.as_u64() {
       return Err(RuleAuditError::InvalidTimestampOrder {

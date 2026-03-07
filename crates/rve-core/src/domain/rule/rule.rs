@@ -3,14 +3,10 @@ use serde::{Deserialize, Serialize};
 use super::{RuleDecision, RuleDefinition, RuleIdentity, RuleMode, RulePolicy};
 use crate::domain::{DomainError, common::RuleId};
 
-/// The central domain aggregate representing a fraud detection rule.
+/// A fraud rule aggregate.
 ///
-/// `Rule` acts as the primary coordinator for the engine's core components. It
-/// integrates business metadata, execution eligibility, evaluation logic, and
-/// deterministic outcomes into a single, cohesive unit.
-///
-/// This structure enforces strict validation boundaries; it is impossible to
-/// instantiate or mutate a `Rule` into an invalid operational state.
+/// A rule combines identity metadata, execution policy, logic definition, and
+/// per-rule outcome.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Rule {
   /// System-level unique identifier for storage and referencing.
@@ -30,15 +26,11 @@ pub struct Rule {
 }
 
 impl Rule {
-  /// Creates a new, validated `Rule` aggregate.
-  ///
-  /// This constructor serves as the final validation boundary for the rule's
-  /// constituent components.
+  /// Creates a rule and validates aggregate invariants.
   ///
   /// # Errors
   ///
-  /// Returns a [`DomainError`] if the provided [`RulePolicy`] or [`RuleDefinition`]
-  /// violate engine constraints.
+  /// Returns [`DomainError`] if `policy` or `definition` is invalid.
   pub fn new(
     id: RuleId,
     identity: RuleIdentity,
@@ -52,76 +44,73 @@ impl Rule {
     Ok(Self { id, identity, policy, definition, outcome })
   }
 
-  /// Evaluates whether the rule is eligible for execution.
-  ///
-  /// This is a high-level guard that checks the internal [`RulePolicy`] against
-  /// the current system time and the event's deterministic traffic bucket.
+  /// Returns `true` if this rule is executable for the given time and bucket.
   pub fn is_executable(&self, now_ms: u64, bucket_0_99: u8) -> bool {
     self.policy.can_execute(now_ms, bucket_0_99)
   }
 
-  /// Transitions the rule's operational mode.
+  /// Transitions the rule mode.
   ///
   /// # Errors
   ///
-  /// Returns a [`DomainError`] if the requested transition violates the
-  /// state machine rules defined in [`RuleMode`].
+  /// Returns [`DomainError`] if the transition is not allowed.
   pub fn transition_to(&mut self, mode: RuleMode) -> Result<(), DomainError> {
     self.policy.transition_to(mode)?;
     Ok(())
   }
 
-  /// Updates the rule's policy after performing validation.
+  /// Replaces the policy after validation.
   ///
-  /// This method ensures that policy updates (e.g., changes in rollout or schedule)
-  /// satisfy all domain invariants before being applied.
+  /// # Errors
+  ///
+  /// Returns [`DomainError`] if `policy` is invalid.
   pub fn set_policy(&mut self, policy: RulePolicy) -> Result<(), DomainError> {
     policy.validate()?;
     self.policy = policy;
     Ok(())
   }
 
-  /// Returns a reference to the rule's identity metadata.
+  /// Returns the identity metadata.
   pub fn identity(&self) -> &RuleIdentity {
     &self.identity
   }
 
-  /// Returns a reference to the rule's operational policy.
+  /// Returns the execution policy.
   pub fn policy(&self) -> &RulePolicy {
     &self.policy
   }
 
-  /// Returns a reference to the rule's logical definition.
+  /// Returns the rule definition.
   pub fn definition(&self) -> &RuleDefinition {
     &self.definition
   }
 
-  /// Returns a reference to the rule's decision output.
+  /// Returns the per-rule outcome.
   pub fn outcome(&self) -> &RuleDecision {
     &self.outcome
   }
 
-  /// Returns a reference to the underlying operational state.
+  /// Returns the current state.
   pub fn state(&self) -> &super::RuleState {
     &self.policy.state
   }
 
-  /// Returns a reference to the rule's temporal schedule.
+  /// Returns the schedule window.
   pub fn schedule(&self) -> &super::RuleSchedule {
     &self.policy.schedule
   }
 
-  /// Returns a reference to the rule's rollout configuration.
+  /// Returns the rollout policy.
   pub fn rollout(&self) -> &super::RolloutPolicy {
     &self.policy.rollout
   }
 
-  /// Returns a reference to the bipartite evaluation logic.
+  /// Returns the evaluation logic.
   pub fn evaluation(&self) -> &crate::domain::rule::RuleEvaluation {
     &self.definition.evaluation
   }
 
-  /// Returns a reference to the prescribed enforcement actions.
+  /// Returns the enforcement settings.
   pub fn enforcement(&self) -> &crate::domain::rule::RuleEnforcement {
     &self.outcome.enforcement
   }

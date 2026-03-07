@@ -2,27 +2,20 @@ use serde::{Deserialize, Serialize};
 
 use super::RuleEnforcement;
 
-/// The terminal output of a successful rule evaluation.
-///
-/// `RuleDecision` represents the final artifact produced by the engine when a rule's
-/// criteria are met. It encapsulates the specific enforcement actions, risk scores,
-/// and metadata that the consuming system must apply to the transaction.
+/// Per-rule outcome used when a rule matches.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RuleDecision {
-  /// The prescribed enforcement parameters and risk impact.
+  /// Enforcement configuration for this rule.
   pub enforcement: RuleEnforcement,
 }
 
 impl RuleDecision {
-  /// Creates a new `RuleDecision` with the specified enforcement.
+  /// Creates a decision from enforcement settings.
   pub fn new(enforcement: RuleEnforcement) -> Self {
     Self { enforcement }
   }
 
-  /// Returns a reference to the rule's [`RuleEnforcement`] parameters.
-  ///
-  /// This provides access to the concrete actions (e.g., block, allow) and
-  /// scoring adjustments dictated by the rule.
+  /// Returns the underlying enforcement settings.
   pub fn enforcement(&self) -> &RuleEnforcement {
     &self.enforcement
   }

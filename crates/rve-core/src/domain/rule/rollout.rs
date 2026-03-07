@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-/// The error type returned when a rollout percentage is out of the valid range.
+/// Errors that can occur when validating [`RolloutPolicy`].
 #[derive(Debug, Clone, Serialize, Deserialize, Error, PartialEq, Eq)]
 pub enum RuleRolloutError {
   /// The provided percentage exceeds the maximum allowed value (100).
@@ -12,10 +12,7 @@ pub enum RuleRolloutError {
   },
 }
 
-/// Percentage-based traffic allocation for incremental rule deployment.
-///
-/// `RolloutPolicy` gatekeeps rule execution by comparing a pre-calculated
-/// traffic bucket against a fixed percentage threshold.
+/// Percentage-based traffic gating for a rule.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RolloutPolicy {
   /// The percentage of traffic (0..=100) subjected to this rule.
@@ -23,23 +20,21 @@ pub struct RolloutPolicy {
 }
 
 impl RolloutPolicy {
-  /// This method performs a simple range check: `bucket < percent`.
-  ///
-  /// Returns `true` if the bucket is inside the enabled percentage.
+  /// Returns `true` if `bucket_0_99 < percent`.
   pub fn is_allowed(&self, bucket_0_99: u8) -> bool {
     bucket_0_99 < self.percent.min(100)
   }
 
-  /// An alias for [`RolloutPolicy::is_allowed`].
+  /// Alias for [`Self::is_allowed`].
   pub fn allows(&self, bucket_0_99: u8) -> bool {
     self.is_allowed(bucket_0_99)
   }
 
-  /// Creates a new [`RolloutPolicy`] and validates its constraints.
+  /// Creates a rollout policy.
   ///
   /// # Errors
   ///
-  /// Returns [`RuleRolloutError::InvalidPercent`] if `percent` exceeds 100.
+  /// Returns [`RuleRolloutError::InvalidPercent`] if `percent > 100`.
   pub fn new(percent: u8) -> Result<Self, RuleRolloutError> {
     if percent > 100 {
       return Err(RuleRolloutError::InvalidPercent { percent });
@@ -47,7 +42,7 @@ impl RolloutPolicy {
     Ok(Self { percent })
   }
 
-  /// Validates the current policy configuration.
+  /// Validates this policy.
   pub fn validate(&self) -> Result<(), RuleRolloutError> {
     RolloutPolicy::new(self.percent).map(|_| ())
   }
