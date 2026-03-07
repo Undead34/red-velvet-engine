@@ -52,7 +52,11 @@ Detailed payload expectations and planned lifecycle operations live in `docs/api
 
 - Format & lint: `cargo fmt && cargo clippy --all-targets --all-features`.
 - Type-check fast: `cargo check` or use `bacon` (see `bacon.toml`) for a live dev loop (`bacon` hotkeys: `c` for clippy, `t` for tests, `r` for `cargo run`).
-- Run tests: `cargo test --all`.
+- Run tests (public baseline):
+  - `cargo test -p rve-core`
+  - `cargo test -p rve-test-suite`
+  - `cargo test -p rve`
+- Full testing strategy (including private suites): `testing/README.md`.
 - Logging is powered by `tracing`; adjust verbosity via CLI flags or `RUST_LOG`.
 
 ## License

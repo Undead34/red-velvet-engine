@@ -1,0 +1,14 @@
+[package]
+name = "rve-test-suite"
+version = "0.1.0"
+publish = false
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+keywords.workspace = true
+
+[dependencies]
+rve-core = { path = "../rve-core" }
+serde_json = { workspace = true }
+semver = { version = "1.0.27", features = ["serde"] }

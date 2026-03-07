@@ -14,7 +14,7 @@ mod policy;
 mod state;
 
 pub use action::RuleAction;
-pub use audit::RuleAudit;
+pub use audit::{RuleAudit, RuleAuditError};
 pub use enforcement::RuleEnforcement;
 pub use evaluation::RuleEvaluation;
 pub use decision::RuleDecision;
