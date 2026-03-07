@@ -35,6 +35,8 @@ use utoipa::{OpenApi, ToSchema};
       RolloutPolicyDoc,
       RuleEvaluationDoc,
       RuleEnforcementDoc,
+      DecisionResponseDoc,
+      DecisionHitDoc,
       EngineStatusResponseDoc,
       ReloadResponseDoc,
       RuleListResponseDoc,
@@ -51,7 +53,7 @@ use utoipa::{OpenApi, ToSchema};
     (name = "health", description = "Health endpoints"),
     (name = "rules", description = "Rules CRUD and validation"),
     (name = "engine", description = "Engine lifecycle operations"),
-    (name = "decisions", description = "Decision endpoint skeleton"),
+    (name = "decisions", description = "Decision endpoint"),
     (name = "metadata", description = "Builder metadata and contract")
   )
 )]
@@ -188,6 +190,26 @@ pub struct RuleDocumentInputDoc {
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct DecisionRequestDoc {
   pub event: Value,
+}
+
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct DecisionResponseDoc {
+  pub score: f32,
+  pub outcome: String,
+  pub hits: Vec<DecisionHitDoc>,
+  pub evaluated_rules: u32,
+  pub executed_rules: u32,
+  pub rollout_bucket: u8,
+}
+
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct DecisionHitDoc {
+  pub rule_id: String,
+  pub action: String,
+  pub severity: String,
+  pub score_delta: f32,
+  pub explanation: Option<String>,
+  pub tags: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]

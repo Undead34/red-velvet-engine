@@ -6,7 +6,7 @@ use tokio::sync::RwLock;
 
 use rve_core::domain::{
   common::{RuleId, Score, Severity, TimestampMs},
-  rule::{mode::RuleMode, *},
+  rule::{mode::RuleMode, RuleExpression, *},
 };
 use rve_core::ports::{RepositoryResult, RulePage, RuleRepositoryError, RuleRepositoryPort};
 use serde_json::json;
@@ -81,9 +81,9 @@ fn default_rules() -> Vec<Rule> {
 }
 
 fn high_value_untrusted_device() -> Rule {
-  Rule {
-    id: rule_id("01952031-1a77-7f0c-9f3c-bfd27d450001"),
-    meta: RuleMeta {
+  Rule::new(
+    rule_id("01952031-1a77-7f0c-9f3c-bfd27d450001"),
+    RuleMeta {
       code: Some("FRAUD-HV-UNTRUSTED-01".into()),
       name: "High Value on Untrusted Device".into(),
       description: Some(
@@ -93,43 +93,54 @@ fn high_value_untrusted_device() -> Rule {
       autor: "Analista".into(),
       tags: Some(vec!["high_value".into(), "device".into()]),
     },
-    state: RuleState {
-      mode: RuleMode::Active,
-      audit: RuleAudit {
-        created_at_ms: TimestampMs::new(utc_ms(2024, 1, 2, 3, 4, 5)).expect("timestamp"),
-        updated_at_ms: TimestampMs::new(utc_ms(2024, 2, 2, 3, 4, 5)).expect("timestamp"),
-        created_by: Some("Super User".into()),
-        updated_by: Some("Analyst Jane".into()),
-      },
-    },
-    schedule: RuleSchedule {
-      active_from_ms: Some(TimestampMs::new(utc_ms(2023, 10, 1, 0, 0, 0)).expect("timestamp")),
-      active_until_ms: None,
-    },
-    rollout: RolloutPolicy { percent: 100 },
-    evaluation: RuleEvaluation {
-      condition: json!(true),
-      logic: json!({
-        "and": [
-          { ">": [{ "var": "transaction.amount" }, 5000] },
-          { "<": [{ "var": "device.trust_score" }, 0.4] }
-        ]
-      }),
-    },
-    enforcement: RuleEnforcement {
+    RulePolicy::new(
+      RuleState::new(
+        RuleMode::Active,
+        RuleAudit {
+          created_at_ms: TimestampMs::new(utc_ms(2024, 1, 2, 3, 4, 5)).expect("timestamp"),
+          updated_at_ms: TimestampMs::new(utc_ms(2024, 2, 2, 3, 4, 5)).expect("timestamp"),
+          created_by: Some("Super User".into()),
+          updated_by: Some("Analyst Jane".into()),
+        },
+      )
+      .expect("seed state"),
+      RuleSchedule::new(
+        Some(TimestampMs::new(utc_ms(2023, 10, 1, 0, 0, 0)).expect("timestamp")),
+        None,
+      )
+      .expect("seed schedule"),
+      RolloutPolicy::new(100).expect("seed rollout"),
+    )
+    .expect("seed policy"),
+    RuleDefinition::new(
+      RuleEvaluation::new(
+        RuleExpression::new(json!(true)).expect("seed condition"),
+        RuleExpression::new(json!({
+          "and": [
+            { ">": [{ "var": "transaction.amount" }, 5000] },
+            { "<": [{ "var": "device.trust_score" }, 0.4] }
+          ]
+        }))
+        .expect("seed logic"),
+      )
+      .expect("seed evaluation"),
+    )
+    .expect("seed definition"),
+    RuleDecision::new(RuleEnforcement {
       score_impact: Score::new(8.5).expect("score"),
       action: RuleAction::Review,
       severity: Severity::High,
       tags: vec!["financial_fraud".into(), "device_fingerprinting".into()],
       cooldown_ms: Some(600_000),
-    },
-  }
+    }),
+  )
+  .expect("seed rule")
 }
 
 fn velocity_flag() -> Rule {
-  Rule {
-    id: rule_id("01952031-1a77-7f0c-9f3c-bfd27d450002"),
-    meta: RuleMeta {
+  Rule::new(
+    rule_id("01952031-1a77-7f0c-9f3c-bfd27d450002"),
+    RuleMeta {
       code: Some("FRAUD-VEL-RETRY-02".into()),
       name: "Velocity Retry Spike".into(),
       description: Some("Dispara si el cliente hace >3 intentos fallidos en 10 minutos".into()),
@@ -137,34 +148,45 @@ fn velocity_flag() -> Rule {
       autor: "Fraud Squad".into(),
       tags: Some(vec!["velocity".into(), "account_takeover".into()]),
     },
-    state: RuleState {
-      mode: RuleMode::Active,
-      audit: RuleAudit {
-        created_at_ms: TimestampMs::new(utc_ms(2023, 11, 5, 0, 0, 0)).expect("timestamp"),
-        updated_at_ms: TimestampMs::new(utc_ms(2024, 1, 15, 12, 0, 0)).expect("timestamp"),
-        created_by: Some("Automation".into()),
-        updated_by: Some("Fraud Squad".into()),
-      },
-    },
-    schedule: RuleSchedule { active_from_ms: None, active_until_ms: None },
-    rollout: RolloutPolicy { percent: 75 },
-    evaluation: RuleEvaluation {
-      condition: json!({ ">": [{ "var": "context.fin.consecutive_declines" }, 0] }),
-      logic: json!({
-        "and": [
-          { ">=": [{ "var": "context.fin.current_hour_count" }, 5] },
-          { "<": [{ "var": "context.fin.last_seen_delta_minutes" }, 10] }
-        ]
-      }),
-    },
-    enforcement: RuleEnforcement {
+    RulePolicy::new(
+      RuleState::new(
+        RuleMode::Active,
+        RuleAudit {
+          created_at_ms: TimestampMs::new(utc_ms(2023, 11, 5, 0, 0, 0)).expect("timestamp"),
+          updated_at_ms: TimestampMs::new(utc_ms(2024, 1, 15, 12, 0, 0)).expect("timestamp"),
+          created_by: Some("Automation".into()),
+          updated_by: Some("Fraud Squad".into()),
+        },
+      )
+      .expect("seed state"),
+      RuleSchedule::new(None, None).expect("seed schedule"),
+      RolloutPolicy::new(75).expect("seed rollout"),
+    )
+    .expect("seed policy"),
+    RuleDefinition::new(
+      RuleEvaluation::new(
+        RuleExpression::new(json!({ ">": [{ "var": "context.fin.consecutive_declines" }, 0] }))
+          .expect("seed condition"),
+        RuleExpression::new(json!({
+          "and": [
+            { ">=": [{ "var": "context.fin.current_hour_count" }, 5] },
+            { "<": [{ "var": "context.fin.last_seen_delta_minutes" }, 10] }
+          ]
+        }))
+        .expect("seed logic"),
+      )
+      .expect("seed evaluation"),
+    )
+    .expect("seed definition"),
+    RuleDecision::new(RuleEnforcement {
       score_impact: Score::new(6.0).expect("score"),
       action: RuleAction::Review,
       severity: Severity::Moderate,
       tags: vec!["velocity".into(), "account_takeover".into()],
       cooldown_ms: Some(120_000),
-    },
-  }
+    }),
+  )
+  .expect("seed rule")
 }
 
 fn utc_ms(year: i32, month: u32, day: u32, hour: u32, min: u32, sec: u32) -> u64 {

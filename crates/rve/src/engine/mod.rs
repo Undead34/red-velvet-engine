@@ -12,7 +12,7 @@ use thiserror::Error;
 
 use rve_core::{
   domain::{common::RuleId, event::Event, rule::Rule},
-  services::engine::{EngineResult, RuleHit},
+  services::engine::{Decision, DecisionHit, EngineResult},
 };
 
 #[derive(Debug, Error)]
@@ -57,11 +57,11 @@ impl RVEngine {
   fn compile_rule(&self, rule: Rule) -> Result<CompiledRule, EngineError> {
     let condition = self
       .logic
-      .compile(&rule.evaluation.condition)
+      .compile(rule.evaluation().condition.as_value())
       .map_err(|source| EngineError::Compilation { rule_id: rule.id.clone(), source })?;
     let logic = self
       .logic
-      .compile(&rule.evaluation.logic)
+      .compile(rule.evaluation().logic.as_value())
       .map_err(|source| EngineError::Compilation { rule_id: rule.id.clone(), source })?;
 
     Ok(CompiledRule { rule, condition, logic })
@@ -79,12 +79,7 @@ impl RVEngine {
 
     for compiled in snapshot.iter() {
       evaluated += 1;
-
-      if !compiled.rule.schedule.is_within_window(now_ms) {
-        continue;
-      }
-
-      if !compiled.rule.rollout.is_allowed(bucket) {
+      if !compiled.rule.is_executable(now_ms, bucket) {
         continue;
       }
 
@@ -106,25 +101,25 @@ impl RVEngine {
         continue;
       }
 
-      let delta = compiled.rule.enforcement.score_impact.as_f32();
+      let delta = compiled.rule.enforcement().score_impact.as_f32();
       score += delta;
 
-      hits.push(RuleHit {
+      hits.push(DecisionHit {
         rule_id: compiled.rule.id.clone(),
-        action: compiled.rule.enforcement.action.clone(),
-        severity: compiled.rule.enforcement.severity,
+        action: compiled.rule.enforcement().action.clone(),
+        severity: compiled.rule.enforcement().severity,
         score_delta: delta,
         explanation: compiled
           .rule
-          .meta
+          .identity()
           .description
           .clone()
-          .or_else(|| Some(compiled.rule.meta.name.clone())),
-        tags: compiled.rule.enforcement.tags.clone(),
+          .or_else(|| Some(compiled.rule.identity().name.clone())),
+        tags: compiled.rule.enforcement().tags.clone(),
       });
     }
 
-    Ok(EngineResult { score, hits, evaluated_rules: evaluated, rollout_bucket: bucket })
+    Ok(Decision::with_scores(score, hits, evaluated, bucket))
   }
 }
 

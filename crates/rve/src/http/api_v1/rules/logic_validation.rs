@@ -1,19 +1,21 @@
 use datalogic_rs::DataLogic;
-use rve_core::domain::rule::RuleEvaluation;
+use rve_core::domain::{
+  rule::{RuleEvaluation, RuleExpression},
+  DomainError,
+};
 use serde_json::Value;
 
 use super::errors::{ApiError, ApiResult};
-use crate::http::api_v1::metadata::JSONLOGIC_ROOT_VARS;
 
 pub(super) fn validate_rule_evaluation(evaluation: &RuleEvaluation) -> ApiResult<()> {
-  validate_vars("evaluation.condition", &evaluation.condition)?;
-  validate_vars("evaluation.logic", &evaluation.logic)?;
+  validate_vars("evaluation.condition", evaluation.condition.as_value())?;
+  validate_vars("evaluation.logic", evaluation.logic.as_value())?;
 
   let logic = DataLogic::new();
-  logic.compile(&evaluation.condition).map_err(|err| {
+  logic.compile(evaluation.condition.as_value()).map_err(|err| {
     ApiError::validation("evaluation.condition", format!("invalid expression: {err}"))
   })?;
-  logic.compile(&evaluation.logic).map_err(|err| {
+  logic.compile(evaluation.logic.as_value()).map_err(|err| {
     ApiError::validation("evaluation.logic", format!("invalid expression: {err}"))
   })?;
 
@@ -21,58 +23,23 @@ pub(super) fn validate_rule_evaluation(evaluation: &RuleEvaluation) -> ApiResult
 }
 
 fn validate_vars(field: &'static str, value: &Value) -> ApiResult<()> {
-  let mut vars = Vec::new();
-  collect_var_paths(value, &mut vars);
-
-  for path in vars {
-    let root = path.split('.').next().unwrap_or_default();
-    if !JSONLOGIC_ROOT_VARS.contains(&root) {
-      return Err(ApiError::validation(
-        field,
-        format!(
-          "var path '{path}' is not allowed; expected roots: {}",
-          JSONLOGIC_ROOT_VARS.join(", ")
-        ),
-      ));
+  match RuleExpression::new(value.clone()) {
+    Ok(expression) => {
+      expression
+        .validate_vars()
+        .map_err(|error: DomainError| ApiError::validation(field, error.to_string()))?;
     }
+    Err(error) => return Err(ApiError::validation(field, error.to_string())),
   }
 
   Ok(())
-}
-
-fn collect_var_paths<'a>(value: &'a Value, vars: &mut Vec<&'a str>) {
-  match value {
-    Value::Object(map) => {
-      if let Some(var_value) = map.get("var") {
-        match var_value {
-          Value::String(path) => vars.push(path.as_str()),
-          Value::Array(items) => {
-            if let Some(Value::String(path)) = items.first() {
-              vars.push(path.as_str());
-            }
-          }
-          _ => {}
-        }
-      }
-
-      for nested in map.values() {
-        collect_var_paths(nested, vars);
-      }
-    }
-    Value::Array(values) => {
-      for nested in values {
-        collect_var_paths(nested, vars);
-      }
-    }
-    _ => {}
-  }
 }
 
 #[cfg(test)]
 mod tests {
   use serde_json::json;
 
-  use rve_core::domain::rule::RuleEvaluation;
+  use rve_core::domain::rule::{RuleEvaluation, RuleExpression};
 
   use super::validate_rule_evaluation;
   use crate::http::api_v1::rules::errors::ApiError;
@@ -80,8 +47,9 @@ mod tests {
   #[test]
   fn rejects_disallowed_var_roots() {
     let evaluation = RuleEvaluation {
-      condition: json!(true),
-      logic: json!({">": [{"var": "config.latam_countries"}, 0]}),
+      condition: RuleExpression::new(json!(true)).expect("valid condition"),
+      logic: RuleExpression::new(json!({">": [{"var": "config.latam_countries"}, 0]}))
+        .expect("valid logic"),
     };
 
     let result = validate_rule_evaluation(&evaluation);

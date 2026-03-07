@@ -19,7 +19,7 @@ pub enum ApiError {
 }
 
 impl ApiError {
-  pub(super) fn validation(field: impl Into<String>, message: impl Into<String>) -> Self {
+  pub fn validation(field: impl Into<String>, message: impl Into<String>) -> Self {
     Self::Unprocessable(ValidationReport {
       errors: vec![ValidationIssue { path: field.into(), message: message.into() }],
       warnings: Vec::new(),

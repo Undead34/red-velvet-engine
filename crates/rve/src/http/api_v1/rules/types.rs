@@ -1,12 +1,14 @@
 use rve_core::domain::{
   common::{RuleId, Score, Severity, TimestampMs},
   rule::{
-    RolloutPolicy, Rule, RuleAction, RuleAudit, RuleEnforcement, RuleEvaluation, RuleMeta,
-    RuleSchedule, RuleState, mode::RuleMode,
+  Rule, RuleAction, RuleAudit, RuleDefinition, RuleDecision, RuleEnforcement, RuleEvaluation,
+    RuleIdentity, RuleExpression, RulePolicy,
+    RuleSchedule, RuleState, RolloutPolicy, mode::RuleMode,
   },
+  DomainError,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value, json};
 use utoipa::IntoParams;
 use validator::{Validate, ValidationError, ValidationErrors, ValidationErrorsKind};
 
@@ -61,15 +63,25 @@ impl RuleDocumentInput {
   pub(super) fn into_rule(self, override_id: Option<RuleId>) -> ApiResult<Rule> {
     self.validate().map_err(map_validation_errors)?;
 
-    let rule = Rule {
-      id: override_id.or(self.id).unwrap_or_else(RuleId::new_v7),
-      meta: self.meta.into_domain(),
-      state: self.state.into_domain(),
-      schedule: self.schedule.into_domain(),
-      rollout: self.rollout.into_domain(),
-      evaluation: self.evaluation.into_domain(),
-      enforcement: self.enforcement.into_domain()?,
-    };
+    let identity = self.meta.into_domain();
+    let policy = RulePolicy::new(
+      self.state.into_domain()?,
+      self.schedule.into_domain()?,
+      self.rollout.into_domain()?,
+    )
+    .map_err(|error| map_domain_error("policy", error.into()))?;
+    let definition = RuleDefinition::new(self.evaluation.into_domain()?)
+      .map_err(|error| map_domain_error("definition", error))?;
+    let outcome = RuleDecision::new(self.enforcement.into_domain()?);
+
+    let rule = Rule::new(
+      override_id.or(self.id).unwrap_or_else(RuleId::new_v7),
+      identity,
+      policy,
+      definition,
+      outcome,
+    )
+    .map_err(|error| map_domain_error("rule", error))?;
 
     validate_rule(&rule)?;
     Ok(rule)
@@ -93,8 +105,8 @@ pub struct RuleMetaInput {
 }
 
 impl RuleMetaInput {
-  fn into_domain(self) -> RuleMeta {
-    RuleMeta {
+  fn into_domain(self) -> RuleIdentity {
+    RuleIdentity {
       code: self.code,
       name: self.name,
       description: self.description,
@@ -114,8 +126,9 @@ pub struct RuleStateInput {
 }
 
 impl RuleStateInput {
-  fn into_domain(self) -> RuleState {
-    RuleState { mode: self.mode, audit: self.audit.into_domain() }
+  fn into_domain(self) -> ApiResult<RuleState> {
+    RuleState::new(self.mode, self.audit.into_domain())
+      .map_err(|error| map_domain_error("state", error.into()))
   }
 }
 
@@ -151,8 +164,9 @@ pub struct RuleScheduleInput {
 }
 
 impl RuleScheduleInput {
-  fn into_domain(self) -> RuleSchedule {
-    RuleSchedule { active_from_ms: self.active_from_ms, active_until_ms: self.active_until_ms }
+  fn into_domain(self) -> ApiResult<RuleSchedule> {
+    RuleSchedule::new(self.active_from_ms, self.active_until_ms)
+      .map_err(|error| map_domain_error("schedule", error.into()))
   }
 }
 
@@ -164,8 +178,8 @@ pub struct RolloutPolicyInput {
 }
 
 impl RolloutPolicyInput {
-  fn into_domain(self) -> RolloutPolicy {
-    RolloutPolicy { percent: self.percent }
+  fn into_domain(self) -> ApiResult<RolloutPolicy> {
+    RolloutPolicy::new(self.percent).map_err(|error| map_domain_error("rollout", error.into()))
   }
 }
 
@@ -177,8 +191,42 @@ pub struct RuleEvaluationInput {
 }
 
 impl RuleEvaluationInput {
-  fn into_domain(self) -> RuleEvaluation {
-    RuleEvaluation { condition: self.condition, logic: self.logic }
+  fn into_domain(self) -> ApiResult<RuleEvaluation> {
+    let condition = RuleExpression::new(normalize_expression_aliases(self.condition))
+      .map_err(|error| map_domain_error("evaluation.condition", error))?;
+    let logic = RuleExpression::new(normalize_expression_aliases(self.logic))
+      .map_err(|error| map_domain_error("evaluation.logic", error))?;
+
+    Ok(RuleEvaluation { condition, logic })
+  }
+}
+
+fn normalize_expression_aliases(value: Value) -> Value {
+  match value {
+    Value::Object(values) => {
+      let mut normalized = Map::new();
+
+      for (op, arg) in values {
+        let normalized_arg = normalize_expression_aliases(arg);
+        match op.as_str() {
+          "=" => {
+            normalized.insert("==".to_owned(), normalized_arg);
+          }
+          "not_in" => {
+            normalized.insert("!".to_owned(), json!({ "in": normalized_arg }));
+          }
+          _ => {
+            normalized.insert(op, normalized_arg);
+          }
+        }
+      }
+
+      Value::Object(normalized)
+    }
+    Value::Array(values) => {
+      Value::Array(values.into_iter().map(normalize_expression_aliases).collect())
+    }
+    _ => value,
   }
 }
 
@@ -212,21 +260,24 @@ impl RuleEnforcementInput {
 }
 
 pub(super) fn validate_rule(rule: &Rule) -> ApiResult<()> {
-  validate_rule_evaluation(&rule.evaluation)?;
+  rule.policy().state().validate().map_err(|error| map_domain_error("state", error.into()))?;
+  rule.policy().schedule().validate().map_err(|error| map_domain_error("schedule", error.into()))?;
+  rule.policy().rollout().validate().map_err(|error| map_domain_error("rollout", error.into()))?;
+  validate_rule_evaluation(rule.evaluation())?;
   Ok(())
 }
 
 pub(super) fn collect_rule_warnings(rule: &Rule) -> Vec<ValidationIssue> {
   let mut warnings = Vec::new();
 
-  if matches!(rule.evaluation.condition, Value::Bool(true)) {
+  if matches!(rule.evaluation().condition.as_value(), Value::Bool(true)) {
     warnings.push(ValidationIssue {
       path: "evaluation.condition".to_owned(),
       message: "condition is always true; rule always evaluates logic".to_owned(),
     });
   }
 
-  if rule.enforcement.tags.is_empty() {
+  if rule.enforcement().tags.is_empty() {
     warnings.push(ValidationIssue {
       path: "enforcement.tags".to_owned(),
       message: "empty tags reduce observability in dashboards".to_owned(),
@@ -308,6 +359,10 @@ fn collect_validation_messages(
   }
 }
 
+fn map_domain_error(field: &str, error: DomainError) -> ApiError {
+  ApiError::validation(field, error.to_string())
+}
+
 #[cfg(test)]
 mod tests {
   use serde_json::json;
@@ -376,5 +431,51 @@ mod tests {
       }
       _ => panic!("expected unprocessable validation error"),
     }
+  }
+
+  #[test]
+  fn normalizes_legacy_expression_operators() {
+    let payload = json!({
+      "meta": {
+        "code": "RL01",
+        "name": "High Value Payment",
+        "description": "legacy operators are normalized",
+        "version": "1.0.0",
+        "autor": "RiskOps"
+      },
+      "state": {
+        "mode": "active",
+        "audit": {
+          "created_at_ms": 1730000000000u64,
+          "updated_at_ms": 1730000001000u64,
+          "created_by": "alice",
+          "updated_by": "alice"
+        }
+      },
+      "schedule": {
+        "active_from_ms": 1730000000000u64
+      },
+      "rollout": { "percent": 50 },
+      "evaluation": {
+        "condition": {"=": [{"var": "payload.money.value"}, 1000]},
+        "logic": {
+          "and": [
+            {"not_in": [{"var": "payload.money.ccy"}, ["USD", "EUR"]]},
+            {"=": [{"var": "context.fin.current_hour_count"}, 0]}
+          ]
+        }
+      },
+      "enforcement": {
+        "score_impact": 6.5,
+        "action": "review",
+        "severity": "high",
+        "tags": ["financial_fraud"],
+        "cooldown_ms": 60000
+      }
+    });
+
+    let parsed: RuleDocumentInput = serde_json::from_value(payload).expect("payload parses");
+    let result = parsed.into_rule(None);
+    assert!(result.is_ok(), "legacy operators must be normalized before validation: {result:?}");
   }
 }

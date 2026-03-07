@@ -1,13 +1,11 @@
 use std::collections::BTreeMap;
 
 use axum::Json;
+use rve_core::domain::rule::JSONLOGIC_ROOT_VARS;
 use serde::Serialize;
 use serde_json::{Value, json};
 
 use rve_core::PKG_VERSION;
-
-pub(crate) const JSONLOGIC_ROOT_VARS: [&str; 7] =
-  ["event", "payload", "context", "signals", "extensions", "transaction", "device"];
 
 const FIELDS_VERSION: &str = "2026-02-20";
 const RULE_SCHEMA_VERSION: &str = "2026-02-01";
@@ -90,7 +88,7 @@ fn supported_fields() -> Vec<FieldMetadata> {
       path: "payload.money.value",
       label: "Money Value",
       kind: "number",
-      allowed_operators: vec![">", ">=", "<", "<=", "=", "!="],
+      allowed_operators: vec![">", ">=", "<", "<=", "==", "!=", "!==", "==="],
       allowed_values: None,
       examples: vec![json!(100), json!(5000)],
       group: "payload.money",
@@ -100,7 +98,7 @@ fn supported_fields() -> Vec<FieldMetadata> {
       path: "payload.money.ccy",
       label: "Currency",
       kind: "string",
-      allowed_operators: vec!["=", "!=", "in", "not_in"],
+      allowed_operators: vec!["==", "===", "!=", "!==", "in"],
       allowed_values: None,
       examples: vec![json!("USD"), json!("EUR")],
       group: "payload.money",
@@ -110,7 +108,7 @@ fn supported_fields() -> Vec<FieldMetadata> {
       path: "payload.parties.originator.country",
       label: "Originator Country",
       kind: "string",
-      allowed_operators: vec!["=", "!=", "in", "not_in"],
+      allowed_operators: vec!["==", "===", "!=", "!==", "in"],
       allowed_values: None,
       examples: vec![json!("US"), json!("MX")],
       group: "payload.parties.originator",
@@ -120,7 +118,7 @@ fn supported_fields() -> Vec<FieldMetadata> {
       path: "context.fin.current_hour_count",
       label: "Current Hour Count",
       kind: "number",
-      allowed_operators: vec![">", ">=", "<", "<=", "=", "!="],
+      allowed_operators: vec![">", ">=", "<", "<=", "==", "!=", "!==", "==="],
       allowed_values: None,
       examples: vec![json!(1), json!(5), json!(12)],
       group: "context.fin",
@@ -130,7 +128,7 @@ fn supported_fields() -> Vec<FieldMetadata> {
       path: "context.fin.last_seen_at",
       label: "Last Seen At",
       kind: "timestamp_ms",
-      allowed_operators: vec![">", ">=", "<", "<=", "=", "!="],
+      allowed_operators: vec![">", ">=", "<", "<=", "==", "!=", "!==", "==="],
       allowed_values: None,
       examples: vec![json!(1730000000000u64)],
       group: "context.fin",
@@ -140,7 +138,7 @@ fn supported_fields() -> Vec<FieldMetadata> {
       path: "signals.flags.vpn",
       label: "VPN Flag",
       kind: "enum",
-      allowed_operators: vec!["=", "!="],
+      allowed_operators: vec!["==", "===", "!=", "!=="],
       allowed_values: Some(vec!["unknown", "no", "yes"]),
       examples: vec![json!("yes")],
       group: "signals.flags",
@@ -150,7 +148,7 @@ fn supported_fields() -> Vec<FieldMetadata> {
       path: "signals.flags.proxy",
       label: "Proxy Flag",
       kind: "enum",
-      allowed_operators: vec!["=", "!="],
+      allowed_operators: vec!["==", "!==", "!=", "==="],
       allowed_values: Some(vec!["unknown", "no", "yes"]),
       examples: vec![json!("no")],
       group: "signals.flags",
@@ -160,7 +158,7 @@ fn supported_fields() -> Vec<FieldMetadata> {
       path: "device.trust_score",
       label: "Device Trust Score",
       kind: "number",
-      allowed_operators: vec![">", ">=", "<", "<=", "=", "!="],
+      allowed_operators: vec![">", ">=", "<", "<=", "==", "!=", "!==", "==="],
       allowed_values: None,
       examples: vec![json!(0.2), json!(0.8)],
       group: "extensions.device",
@@ -170,7 +168,7 @@ fn supported_fields() -> Vec<FieldMetadata> {
       path: "transaction.amount",
       label: "Transaction Amount",
       kind: "number",
-      allowed_operators: vec![">", ">=", "<", "<=", "=", "!="],
+      allowed_operators: vec![">", ">=", "<", "<=", "==", "!=", "!==", "==="],
       allowed_values: None,
       examples: vec![json!(1500), json!(7500)],
       group: "extensions.transaction",
