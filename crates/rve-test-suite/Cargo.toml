@@ -9,7 +9,11 @@ description.workspace = true
 keywords.workspace = true
 
 [dependencies]
+rve = { path = "../rve" }
 rve-core = { path = "../rve-core" }
 serde_json = { workspace = true }
 semver = { version = "1.0.27", features = ["serde"] }
 chrono = { version = "0.4.43", features = ["serde"] }
+tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread"] }
+axum = "0.8.8"
+tower = { version = "0.5.2", features = ["util"] }
