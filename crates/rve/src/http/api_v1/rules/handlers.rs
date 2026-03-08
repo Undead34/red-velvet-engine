@@ -58,7 +58,7 @@ pub async fn list_rules(
   tag = "rules",
   request_body(
       content = crate::http::openapi::RuleDocumentInputDoc,
-      description = "Rule configuration payload containing conditions and actions"
+      description = "Rule configuration payload. `meta.author` is required, `meta.autor` is rejected. `enforcement.score_impact` must be in `1.0..=10.0`."
   ),
   responses(
     (status = 201, description = "Rule successfully created", body = crate::http::openapi::RuleDoc),
@@ -137,7 +137,7 @@ pub async fn get_rule(
   ),
   request_body(
     content = crate::http::openapi::RuleDocumentInputDoc,
-    description = "Complete rule configuration payload to replace the existing one"
+    description = "Complete rule configuration payload to replace the existing one. `enforcement.score_impact` must be in `1.0..=10.0`."
   ),
   responses(
     (status = 200, description = "Rule successfully replaced", body = crate::http::openapi::RuleDoc),

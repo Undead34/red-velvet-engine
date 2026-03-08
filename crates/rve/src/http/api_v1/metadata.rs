@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 
 use rve_core::PKG_VERSION;
 
-const FIELDS_VERSION: &str = "2026-02-20";
+const FIELDS_VERSION: &str = "2026-03-08";
 const RULE_SCHEMA_VERSION: &str = "2026-02-01";
 
 #[derive(Serialize)]
@@ -34,7 +34,11 @@ pub struct FieldMetadata {
   path = "/api/v1/metadata/fields",
   tag = "metadata",
   responses(
-    (status = 200, description = "Supported fields for rule builder", body = crate::http::openapi::FieldsResponseDoc)
+    (
+      status = 200,
+      description = "Supported fields for the rule builder. Prefer canonical paths (`payload.*`, `features.*`, `signals.*`). `transaction.*` and `device.*` are extension-derived aliases from `payload.extensions`.",
+      body = crate::http::openapi::FieldsResponseDoc
+    )
   )
 )]
 pub async fn fields() -> Json<FieldsResponse> {
@@ -60,7 +64,11 @@ pub struct JsonLogicContract {
   path = "/api/v1/metadata/contract",
   tag = "metadata",
   responses(
-    (status = 200, description = "Runtime contract metadata", body = crate::http::openapi::ContractResponseDoc)
+    (
+      status = 200,
+      description = "Runtime contract metadata, including allowed enums and JSONLogic root variables.",
+      body = crate::http::openapi::ContractResponseDoc
+    )
   )
 )]
 pub async fn contract() -> Json<ContractResponse> {
@@ -162,7 +170,8 @@ fn supported_fields() -> Vec<FieldMetadata> {
       allowed_values: None,
       examples: vec![json!(0.2), json!(0.8)],
       group: "extensions.device",
-      description: "Score de confianza del dispositivo proveniente de extensiones.",
+      description:
+        "Score de confianza del dispositivo en `payload.extensions.device.trust_score` (opcional).",
     },
     FieldMetadata {
       path: "transaction.amount",
@@ -172,7 +181,8 @@ fn supported_fields() -> Vec<FieldMetadata> {
       allowed_values: None,
       examples: vec![json!(1500), json!(7500)],
       group: "extensions.transaction",
-      description: "Monto normalizado expuesto para JSONLogic.",
+      description:
+        "Monto en `payload.extensions.transaction.amount` (opcional, no sustituye `payload.money.value`).",
     },
   ]
 }

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use axum::Json;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Value, json};
 use utoipa::{OpenApi, ToSchema};
 
 #[derive(OpenApi)]
@@ -69,6 +69,18 @@ pub struct HealthResponse {
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
+#[schema(
+  example = json!({
+    "code": "unprocessable_entity",
+    "message": "validation failed",
+    "validation": {
+      "errors": [
+        {"path": "enforcement.score_impact", "message": "must be between 1.0 and 10.0"}
+      ],
+      "warnings": []
+    }
+  })
+)]
 pub struct ErrorResponse {
   pub code: String,
   pub message: String,
@@ -154,11 +166,16 @@ pub struct RuleEvaluationDoc {
 
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct RuleEnforcementDoc {
+  /// Numeric risk impact applied when the rule matches. Range: `1.0..=10.0`.
   pub score_impact: f32,
+  /// Action applied when the rule matches. Enum: `allow|review|block|tag_only`.
   pub action: String,
+  /// Severity classification for observability/escalation.
   pub severity: String,
   pub tags: Vec<String>,
+  /// Optional cooldown window in milliseconds. Range: `1..=86_400_000` when present.
   pub cooldown_ms: Option<u64>,
+  /// Ordered runtime function pipeline (domain-level abstraction).
   pub functions: Vec<Value>,
 }
 
@@ -178,6 +195,57 @@ pub struct EngineStatusResponseDoc {
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
+#[schema(
+  example = json!({
+    "meta": {
+      "code": "FRAUD-HV-001",
+      "name": "High value transaction",
+      "description": "Flags large transaction amounts",
+      "version": "1.0.0",
+      "author": "RiskOps",
+      "tags": ["high_value"]
+    },
+    "state": {
+      "mode": "active",
+      "audit": {
+        "created_at_ms": 1730000000000u64,
+        "updated_at_ms": 1730000001000u64,
+        "created_by": "riskops",
+        "updated_by": "riskops"
+      }
+    },
+    "schedule": {
+      "active_from_ms": 1730000000000u64
+    },
+    "rollout": { "percent": 100 },
+    "evaluation": {
+      "condition": true,
+      "logic": {
+        "and": [
+          { ">": [ { "var": "payload.money.value" }, 1000 ] },
+          { ">=": [ { "var": "features.fin.current_hour_count" }, 1 ] }
+        ]
+      }
+    },
+    "enforcement": {
+      "score_impact": 6.5,
+      "action": "review",
+      "severity": "high",
+      "tags": ["financial_fraud"],
+      "cooldown_ms": 60000,
+      "functions": [
+        {
+          "kind": "validate",
+          "config": {
+            "rules": [
+              { "logic": true, "message": "ok" }
+            ]
+          }
+        }
+      ]
+    }
+  })
+)]
 pub struct RuleDocumentInputDoc {
   pub id: Option<String>,
   pub meta: RuleMetaDoc,
@@ -189,6 +257,69 @@ pub struct RuleDocumentInputDoc {
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
+#[schema(
+  example = json!({
+    "header": {
+      "timestamp": "2026-03-08T00:00:00Z",
+      "source": "checkout",
+      "event_id": "evt_123",
+      "instrument": "card",
+      "channel": "web"
+    },
+    "context": {
+      "geo": { "country": "US", "lat": 40.71, "lon": -74.01 },
+      "net": { "source_ip": "203.0.113.10" },
+      "env": { "device_id": "dev_1", "session_id": "sess_1" }
+    },
+    "features": {
+      "fin": {
+        "first_seen_at": 1730000000000u64,
+        "last_seen_at": 1730000005000u64,
+        "last_declined_at": Value::Null,
+        "total_successful_txns": 12u64,
+        "total_declined_txns": 1u64,
+        "total_amount_spent": 150000u64,
+        "max_ticket_ever": 45000u64,
+        "consecutive_failed_logins": 0,
+        "consecutive_declines": 0,
+        "current_hour_count": 2,
+        "current_hour_amount": 1500u64,
+        "current_day_count": 3,
+        "current_day_amount": 1500u64,
+        "known_ips": ["203.0.113.10"],
+        "known_devices": ["dev_1"]
+      }
+    },
+    "signals": { "flags": {} },
+    "payload": {
+      "money": { "value": 1500.0, "ccy": "USD" },
+      "parties": {
+        "originator": {
+          "entity_type": "individual",
+          "acct": "acc_1",
+          "country": "US",
+          "bank": "bank_1",
+          "kyc": "tier_2",
+          "watchlist": "no",
+          "sanctions_score": 0.01
+        },
+        "beneficiary": {
+          "entity_type": "business",
+          "acct": "acc_2",
+          "country": "US",
+          "bank": "bank_2",
+          "kyc": "tier_3",
+          "watchlist": "no",
+          "sanctions_score": 0.0
+        }
+      },
+      "extensions": {
+        "transaction": { "amount": 1500 },
+        "device": { "trust_score": 0.7 }
+      }
+    }
+  })
+)]
 pub struct DecisionRequestDoc {
   pub header: Value,
   pub context: Value,
@@ -198,6 +329,25 @@ pub struct DecisionRequestDoc {
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
+#[schema(
+  example = json!({
+    "score": 6.5,
+    "outcome": "review",
+    "hits": [
+      {
+        "rule_id": "01952031-1a77-7f0c-9f3c-bfd27d450001",
+        "action": "review",
+        "severity": "high",
+        "score_delta": 6.5,
+        "explanation": "High value transaction",
+        "tags": ["financial_fraud"]
+      }
+    ],
+    "evaluated_rules": 2,
+    "executed_rules": 1,
+    "rollout_bucket": 42
+  })
+)]
 pub struct DecisionResponseDoc {
   pub score: f32,
   pub outcome: String,
@@ -224,6 +374,18 @@ pub struct FieldsResponseDoc {
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
+#[schema(
+  example = json!({
+    "path": "payload.money.value",
+    "label": "Money Value",
+    "type": "number",
+    "allowed_operators": [">", ">=", "<", "<=", "==", "!=", "!==", "==="],
+    "allowed_values": Value::Null,
+    "examples": [100, 5000],
+    "group": "payload.money",
+    "description": "Monto de la transaccion."
+  })
+)]
 pub struct FieldMetadataDoc {
   pub path: String,
   pub label: String,
@@ -237,6 +399,20 @@ pub struct FieldMetadataDoc {
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
+#[schema(
+  example = json!({
+    "contract_version": "0.1.0",
+    "api_version": "v1",
+    "rule_schema_version": "2026-02-01",
+    "enums": {
+      "state.mode": ["staged", "active", "suspended", "deactivated"],
+      "enforcement.action": ["allow", "review", "block", "tag_only"]
+    },
+    "jsonlogic": {
+      "root_vars": ["event", "payload", "context", "features", "signals", "extensions", "transaction", "device"]
+    }
+  })
+)]
 pub struct ContractResponseDoc {
   pub contract_version: String,
   pub api_version: String,

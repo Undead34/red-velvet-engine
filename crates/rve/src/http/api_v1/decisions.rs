@@ -28,7 +28,10 @@ use super::rules::errors::{ApiError, ApiResult};
   post,
   path = "/api/v1/decisions",
   tag = "decisions",
-  request_body = crate::http::openapi::DecisionRequestDoc,
+  request_body(
+    content = crate::http::openapi::DecisionRequestDoc,
+    description = "Direct EventInput body (no `event` wrapper)."
+  ),
   responses(
     (status = 200, description = "Decision evaluated", body = crate::http::openapi::DecisionResponseDoc),
     (status = 422, description = "Invalid event payload", body = crate::http::openapi::ErrorResponse),
