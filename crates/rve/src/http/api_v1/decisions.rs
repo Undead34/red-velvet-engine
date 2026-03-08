@@ -30,10 +30,10 @@ use super::rules::errors::{ApiError, ApiResult};
   tag = "decisions",
   request_body(
     content = crate::http::openapi::DecisionRequestDoc,
-    description = "Direct EventInput body (no `event` wrapper)."
+    description = "Direct EventInput body (no `event` wrapper). `header.event_id` is optional but must be UUID when present. `features.fin` is currently strict (full object required). `payload.parties.originator` and `payload.parties.beneficiary` are required."
   ),
   responses(
-    (status = 200, description = "Decision evaluated", body = crate::http::openapi::DecisionResponseDoc),
+    (status = 200, description = "Decision evaluated. If no rules match, response is `outcome=allow` with empty `hits`.", body = crate::http::openapi::DecisionResponseDoc),
     (status = 422, description = "Invalid event payload", body = crate::http::openapi::ErrorResponse),
     (status = 500, description = "Decision engine evaluation failed", body = crate::http::openapi::ErrorResponse)
   )

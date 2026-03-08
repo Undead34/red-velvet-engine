@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use axum::Json;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
 use utoipa::{OpenApi, ToSchema};
 
 #[derive(OpenApi)]
@@ -262,7 +262,7 @@ pub struct RuleDocumentInputDoc {
     "header": {
       "timestamp": "2026-03-08T00:00:00Z",
       "source": "checkout",
-      "event_id": "evt_123",
+      "event_id": "123e4567-e89b-12d3-a456-426614174000",
       "instrument": "card",
       "channel": "web"
     },
@@ -321,10 +321,18 @@ pub struct RuleDocumentInputDoc {
   })
 )]
 pub struct DecisionRequestDoc {
+  /// Header context.
+  /// `event_id` is optional, but when present it must be a valid UUID string.
   pub header: Value,
+  /// Snapshot context (`geo`, `net`, `env`).
   pub context: Value,
+  /// Historical anti-fraud features.
+  /// Current contract expects a complete `features.fin` object, not a partial patch.
   pub features: Value,
+  /// Flags map (`signals.flags`).
   pub signals: Value,
+  /// Transaction payload.
+  /// `payload.parties.originator` and `payload.parties.beneficiary` are required.
   pub payload: Value,
 }
 
@@ -349,8 +357,12 @@ pub struct DecisionRequestDoc {
   })
 )]
 pub struct DecisionResponseDoc {
+  /// Aggregated risk score from matched rules.
   pub score: f32,
+  /// Final outcome.
+  /// When no rules match, outcome is `allow`.
   pub outcome: String,
+  /// Rule hits that matched for this event.
   pub hits: Vec<DecisionHitDoc>,
   pub evaluated_rules: u32,
   pub executed_rules: u32,
