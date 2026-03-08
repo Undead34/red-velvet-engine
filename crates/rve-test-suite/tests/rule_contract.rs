@@ -50,6 +50,7 @@ fn valid_outcome() -> RuleDecision {
     severity: Severity::High,
     tags: vec!["fraud".into()],
     cooldown_ms: None,
+    functions: vec![],
   })
 }
 

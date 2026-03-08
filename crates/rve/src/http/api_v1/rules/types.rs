@@ -3,7 +3,8 @@ use rve_core::domain::{
   common::{RuleId, Score, Severity, TimestampMs},
   rule::{
     RolloutPolicy, Rule, RuleAction, RuleAudit, RuleDecision, RuleDefinition, RuleEnforcement,
-    RuleEvaluation, RuleExpression, RuleIdentity, RulePolicy, RuleSchedule, RuleState,
+    FunctionKind, RuleEvaluation, RuleExpression, RuleFunctionSpec, RuleIdentity, RulePolicy,
+    RuleSchedule, RuleState,
     mode::RuleMode,
   },
 };
@@ -203,6 +204,19 @@ impl RuleEvaluationInput {
 
 #[derive(Debug, Deserialize, Validate)]
 #[serde(deny_unknown_fields)]
+pub struct RuleFunctionInput {
+  pub kind: FunctionKind,
+  pub config: Value,
+}
+
+impl RuleFunctionInput {
+  fn into_domain(self) -> Result<RuleFunctionSpec, DomainError> {
+    RuleFunctionSpec::new(self.kind, self.config)
+  }
+}
+
+#[derive(Debug, Deserialize, Validate)]
+#[serde(deny_unknown_fields)]
 pub struct RuleEnforcementInput {
   #[validate(range(min = 1.0, max = 10.0))]
   pub score_impact: f32,
@@ -212,6 +226,8 @@ pub struct RuleEnforcementInput {
   pub tags: Vec<String>,
   #[validate(range(min = 1, max = 86_400_000))]
   pub cooldown_ms: Option<u64>,
+  #[serde(default)]
+  pub functions: Vec<RuleFunctionInput>,
 }
 
 impl RuleEnforcementInput {
@@ -219,6 +235,12 @@ impl RuleEnforcementInput {
     let score_impact = Score::new(self.score_impact).ok_or_else(|| {
       ApiError::validation("enforcement.score_impact", "must be between 1.0 and 10.0")
     })?;
+    let mut functions = Vec::with_capacity(self.functions.len());
+    for (index, function) in self.functions.into_iter().enumerate() {
+      let field = format!("enforcement.functions[{index}]");
+      let function = function.into_domain().map_err(|error| map_domain_error(&field, error))?;
+      functions.push(function);
+    }
 
     Ok(RuleEnforcement {
       score_impact,
@@ -226,6 +248,7 @@ impl RuleEnforcementInput {
       severity: self.severity,
       tags: self.tags,
       cooldown_ms: self.cooldown_ms,
+      functions,
     })
   }
 }

@@ -132,6 +132,7 @@ fn high_value_untrusted_device() -> Rule {
       severity: Severity::High,
       tags: vec!["financial_fraud".into(), "device_fingerprinting".into()],
       cooldown_ms: Some(600_000),
+      functions: vec![],
     }),
   )
   .expect("seed rule")
@@ -184,6 +185,7 @@ fn velocity_flag() -> Rule {
       severity: Severity::Moderate,
       tags: vec!["velocity".into(), "account_takeover".into()],
       cooldown_ms: Some(120_000),
+      functions: vec![],
     }),
   )
   .expect("seed rule")

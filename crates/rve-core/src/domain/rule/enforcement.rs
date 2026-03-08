@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::RuleAction;
+use super::{RuleAction, RuleFunctionSpec};
 use crate::domain::common::{Score, Severity};
 
 /// The concrete impact and operational directives of a triggered rule.
@@ -24,4 +24,8 @@ pub struct RuleEnforcement {
 
   /// An optional suppression window (in milliseconds) to prevent redundant triggers.
   pub cooldown_ms: Option<u64>,
+
+  /// Ordered function pipeline to be mapped by runtime adapters.
+  #[serde(default)]
+  pub functions: Vec<RuleFunctionSpec>,
 }

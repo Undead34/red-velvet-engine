@@ -159,6 +159,7 @@ pub struct RuleEnforcementDoc {
   pub severity: String,
   pub tags: Vec<String>,
   pub cooldown_ms: Option<u64>,
+  pub functions: Vec<Value>,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]

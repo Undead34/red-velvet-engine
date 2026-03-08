@@ -15,7 +15,7 @@ use rve_core::{
       Party, Payload, Signals, signals::Signal,
     },
   },
-  services::engine::Decision,
+  services::engine::{Decision, DecisionService},
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -40,9 +40,8 @@ pub async fn create_decision(
   Json(request): Json<EventInput>,
 ) -> ApiResult<Json<Decision>> {
   let event = request.into_domain()?;
-  let decision = state
-    .engine
-    .evaluate(&event)
+  let decision = DecisionService::decide(state.engine.as_ref(), &event)
+    .await
     .map_err(|error| ApiError::Internal(format!("decision engine error: {error}")))?;
 
   Ok(Json(decision))

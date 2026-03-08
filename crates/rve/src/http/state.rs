@@ -1,12 +1,15 @@
 use std::sync::Arc;
 
-use rve_core::ports::{RuleRepositoryError, RuleRepositoryPort};
+use rve_core::{
+  ports::RuleRepositoryPort,
+  services::engine::{DecisionService, DecisionServiceError},
+};
 use thiserror::Error;
 use tokio::sync::RwLock;
 use tracing::error;
 
 use crate::{
-  engine::{EngineError, RVEngine},
+  engine::RVEngine,
   store::InMemoryRuleRepository,
 };
 
@@ -36,14 +39,15 @@ impl AppState {
       last_reload_error: None,
     };
 
-    if let Ok(rules) = repo.all().await {
-      runtime.loaded_rules = rules.len() as u32;
-      if let Err(err) = engine.publish_rules(rules) {
+    match DecisionService::reload_rules(repo.as_ref(), engine.as_ref()).await {
+      Ok(snapshot) => {
+        runtime.ruleset_version = snapshot.version;
+        runtime.loaded_rules = snapshot.loaded_rules;
+        runtime.last_reload_at_ms = Some(current_time_ms());
+      }
+      Err(err) => {
         error!(target: "BANNER", %err, "failed to compile initial ruleset");
         runtime.last_reload_error = Some(err.to_string());
-      } else {
-        runtime.ruleset_version = 1;
-        runtime.last_reload_at_ms = Some(current_time_ms());
       }
     }
 
@@ -51,14 +55,11 @@ impl AppState {
   }
 
   pub async fn reload_rules(&self) -> Result<(), EngineSyncError> {
-    let rules = self.rule_repo.all().await.map_err(EngineSyncError::Repository)?;
-    let loaded_rules = rules.len() as u32;
-
-    match self.engine.publish_rules(rules) {
-      Ok(()) => {
+    match DecisionService::reload_rules(self.rule_repo.as_ref(), self.engine.as_ref()).await {
+      Ok(snapshot) => {
         let mut runtime = self.engine_runtime.write().await;
-        runtime.ruleset_version = runtime.ruleset_version.saturating_add(1);
-        runtime.loaded_rules = loaded_rules;
+        runtime.ruleset_version = snapshot.version;
+        runtime.loaded_rules = snapshot.loaded_rules;
         runtime.last_reload_at_ms = Some(current_time_ms());
         runtime.last_reload_error = None;
         Ok(())
@@ -66,7 +67,7 @@ impl AppState {
       Err(err) => {
         let mut runtime = self.engine_runtime.write().await;
         runtime.last_reload_error = Some(err.to_string());
-        Err(EngineSyncError::Engine(err))
+        Err(EngineSyncError::Decision(err))
       }
     }
   }
@@ -85,7 +86,5 @@ fn current_time_ms() -> u64 {
 #[derive(Debug, Error)]
 pub enum EngineSyncError {
   #[error(transparent)]
-  Repository(#[from] RuleRepositoryError),
-  #[error(transparent)]
-  Engine(#[from] EngineError),
+  Decision(#[from] DecisionServiceError),
 }
