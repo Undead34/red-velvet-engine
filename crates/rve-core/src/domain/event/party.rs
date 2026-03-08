@@ -4,7 +4,7 @@ use crate::domain::common::{AccountId, BankRef, CountryCode, EntityType, Flag, K
 
 use super::error::EventPartyError;
 
-/// Identity and compliance attributes for one party.
+/// Identity and compliance data for one party.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Party {
   pub entity_type: EntityType,
@@ -17,6 +17,11 @@ pub struct Party {
 }
 
 impl Party {
+  /// Creates a party and validates its constraints.
+  ///
+  /// # Errors
+  ///
+  /// Returns [`EventPartyError`] when party data is invalid.
   pub fn new(
     entity_type: EntityType,
     acct: AccountId,
@@ -31,6 +36,12 @@ impl Party {
     Ok(party)
   }
 
+  /// Validates party constraints.
+  ///
+  /// # Errors
+  ///
+  /// Returns [`EventPartyError::InvalidSanctionsScore`] when
+  /// `sanctions_score` is non-finite or outside `0.0..=1.0`.
   pub fn validate(&self) -> Result<(), EventPartyError> {
     if let Some(score) = self.sanctions_score
       && (!score.is_finite() || !(0.0..=1.0).contains(&score))

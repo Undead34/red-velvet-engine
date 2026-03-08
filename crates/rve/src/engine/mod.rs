@@ -176,9 +176,7 @@ mod tests {
 
   use chrono::Utc;
   use rve_core::domain::{
-    common::{
-      AccountId, Currency, EventSource, Flag, RuleId, Score, Severity, TimestampMs,
-    },
+    common::{AccountId, Currency, EventSource, Flag, RuleId, Score, Severity, TimestampMs},
     event::{
       Context, EnvironmentContext, Event, Features, FinancialFeatures, GeoContext, Header,
       NetworkContext, Parties, Party, Payload, Signals,
@@ -202,10 +200,7 @@ mod tests {
 
     assert_eq!(decision.hits.len(), 1);
     assert!(decision.score > 0.0);
-    assert!(matches!(
-      decision.outcome,
-      rve_core::services::engine::DecisionOutcome::Review
-    ));
+    assert!(matches!(decision.outcome, rve_core::services::engine::DecisionOutcome::Review));
   }
 
   fn valid_rule() -> Rule {
@@ -216,7 +211,7 @@ mod tests {
         name: "Features Velocity".into(),
         description: Some("match when current_hour_count > 0".into()),
         version: semver::Version::new(1, 0, 0),
-        autor: "risk".into(),
+        author: "risk".into(),
         tags: Some(vec!["velocity".into()]),
       },
       RulePolicy::new(

@@ -99,7 +99,8 @@ pub struct RuleMetaInput {
   pub description: Option<String>,
   pub version: semver::Version,
   #[validate(length(min = 1, max = 120))]
-  pub autor: String,
+  #[serde(alias = "autor")]
+  pub author: String,
   #[validate(length(max = 32))]
   pub tags: Option<Vec<String>>,
 }
@@ -111,7 +112,7 @@ impl RuleMetaInput {
       name: self.name,
       description: self.description,
       version: self.version,
-      autor: self.autor,
+      author: self.author,
       tags: self.tags,
     }
   }
@@ -381,7 +382,7 @@ mod tests {
         "name": "High Value Payment",
         "description": "flags high value transaction",
         "version": "1.0.0",
-        "autor": "RiskOps",
+        "author": "RiskOps",
         "tags": ["high_value", "payments"]
       },
       "state": {
@@ -445,7 +446,7 @@ mod tests {
         "name": "High Value Payment",
         "description": "legacy operators are normalized",
         "version": "1.0.0",
-        "autor": "RiskOps"
+        "author": "RiskOps"
       },
       "state": {
         "mode": "active",

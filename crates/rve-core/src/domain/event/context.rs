@@ -6,11 +6,14 @@ use crate::domain::common::{CountryCode, DeviceId, LocaleTag, SessionId, Timezon
 
 use super::error::EventGeoError;
 
-/// Snapshot context attached to an event.
+/// Request-time snapshot context.
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct Context {
+  /// Geographic snapshot.
   pub geo: GeoContext,
+  /// Network snapshot.
   pub net: NetworkContext,
+  /// Environment snapshot.
   pub env: EnvironmentContext,
 }
 
@@ -27,6 +30,15 @@ pub struct GeoContext {
 }
 
 impl GeoContext {
+  /// Validates geographic coordinate ranges.
+  ///
+  /// # Errors
+  ///
+  /// Returns [`EventGeoError::InvalidLatitude`] when `lat` is non-finite or
+  /// outside `-90..=90`.
+  ///
+  /// Returns [`EventGeoError::InvalidLongitude`] when `lon` is non-finite or
+  /// outside `-180..=180`.
   pub fn validate(&self) -> Result<(), EventGeoError> {
     if let Some(lat) = self.lat
       && (!lat.is_finite() || !(-90.0..=90.0).contains(&lat))

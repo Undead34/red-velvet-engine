@@ -126,9 +126,7 @@ fn rejects_invalid_feature_chronology() {
   let result = event.validate();
   assert!(matches!(
     result,
-    Err(DomainError::Event(EventError::Features(EventFeaturesError::InvalidSeenChronology {
-      ..
-    })))
+    Err(DomainError::Event(EventError::Features(EventFeaturesError::InvalidSeenChronology { .. })))
   ));
 }
 

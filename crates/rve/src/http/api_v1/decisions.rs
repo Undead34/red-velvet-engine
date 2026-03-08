@@ -85,7 +85,8 @@ impl HeaderInput {
   fn into_domain(self) -> ApiResult<Header> {
     Ok(Header {
       timestamp: self.timestamp,
-      source: EventSource::new(self.source).map_err(|error| map_domain_error("header.source", error))?,
+      source: EventSource::new(self.source)
+        .map_err(|error| map_domain_error("header.source", error))?,
       event_id: self
         .event_id
         .map(EventId::try_from)
@@ -115,7 +116,11 @@ pub struct ContextInput {
 
 impl ContextInput {
   fn into_domain(self) -> ApiResult<Context> {
-    Ok(Context { geo: self.geo.into_domain()?, net: self.net.into_domain(), env: self.env.into_domain()? })
+    Ok(Context {
+      geo: self.geo.into_domain()?,
+      net: self.net.into_domain(),
+      env: self.env.into_domain()?,
+    })
   }
 }
 
@@ -310,7 +315,8 @@ pub struct MoneyInput {
 
 impl MoneyInput {
   fn into_domain(self) -> ApiResult<rve_core::domain::common::Money> {
-    let ccy = Currency::new(self.ccy).map_err(|error| map_domain_error("payload.money.ccy", error))?;
+    let ccy =
+      Currency::new(self.ccy).map_err(|error| map_domain_error("payload.money.ccy", error))?;
     rve_core::domain::common::Money::new(self.value, ccy)
       .map_err(|error| map_domain_error("payload.money.value", error))
   }
@@ -325,7 +331,10 @@ pub struct PartiesInput {
 
 impl PartiesInput {
   fn into_domain(self) -> ApiResult<Parties> {
-    Ok(Parties { originator: self.originator.into_domain("payload.parties.originator")?, beneficiary: self.beneficiary.into_domain("payload.parties.beneficiary")? })
+    Ok(Parties {
+      originator: self.originator.into_domain("payload.parties.originator")?,
+      beneficiary: self.beneficiary.into_domain("payload.parties.beneficiary")?,
+    })
   }
 }
 
@@ -345,7 +354,8 @@ impl PartyInput {
   fn into_domain(self, base_path: &str) -> ApiResult<Party> {
     Party::new(
       self.entity_type,
-      AccountId::new(self.acct).map_err(|error| map_domain_error(&format!("{base_path}.acct"), error))?,
+      AccountId::new(self.acct)
+        .map_err(|error| map_domain_error(&format!("{base_path}.acct"), error))?,
       self
         .country
         .map(CountryCode::new)
@@ -380,9 +390,9 @@ fn map_event_domain_error(error: DomainError) -> ApiError {
     DomainError::Event(EventError::Geo(EventGeoError::InvalidLongitude { .. })) => {
       ApiError::validation("context.geo.lon", error.to_string())
     }
-    DomainError::Event(EventError::Features(EventFeaturesError::InvalidSeenChronology { .. })) => {
-      ApiError::validation("features.fin.last_seen_at", error.to_string())
-    }
+    DomainError::Event(EventError::Features(EventFeaturesError::InvalidSeenChronology {
+      ..
+    })) => ApiError::validation("features.fin.last_seen_at", error.to_string()),
     DomainError::Event(EventError::Features(
       EventFeaturesError::InvalidLastDeclinedChronology { .. },
     )) => ApiError::validation("features.fin.last_declined_at", error.to_string()),

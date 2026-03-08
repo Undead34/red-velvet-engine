@@ -21,7 +21,7 @@ pub struct RuleIdentity {
   pub version: semver::Version,
 
   /// The entity or team responsible for maintaining the rule.
-  pub autor: String,
+  pub author: String,
 
   /// Categorical labels used for filtering and aggregation.
   pub tags: Option<Vec<String>>,

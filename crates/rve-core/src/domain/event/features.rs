@@ -4,17 +4,21 @@ use serde::{Deserialize, Serialize};
 
 use super::error::EventFeaturesError;
 
-/// Historical and derived features used by fraud rules.
+/// Historical and derived features used by rules.
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct Features {
+  /// Financial behavior features.
   pub fin: FinancialFeatures,
 }
 
-/// Financial behavior features.
+/// Financial counters and timelines.
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct FinancialFeatures {
+  /// First known timestamp for this identity.
   pub first_seen_at: u64,
+  /// Most recent known timestamp for this identity.
   pub last_seen_at: u64,
+  /// Most recent declined timestamp, if any.
   pub last_declined_at: Option<u64>,
   pub total_successful_txns: u64,
   pub total_declined_txns: u64,
@@ -31,12 +35,26 @@ pub struct FinancialFeatures {
 }
 
 impl Features {
+  /// Validates all feature groups.
+  ///
+  /// # Errors
+  ///
+  /// Returns [`EventFeaturesError`] if chronology is invalid.
   pub fn validate(&self) -> Result<(), EventFeaturesError> {
     self.fin.validate()
   }
 }
 
 impl FinancialFeatures {
+  /// Validates feature chronology constraints.
+  ///
+  /// # Errors
+  ///
+  /// Returns [`EventFeaturesError::InvalidSeenChronology`] when
+  /// `first_seen_at > last_seen_at`.
+  ///
+  /// Returns [`EventFeaturesError::InvalidLastDeclinedChronology`] when
+  /// `last_declined_at < first_seen_at`.
   pub fn validate(&self) -> Result<(), EventFeaturesError> {
     if self.first_seen_at > self.last_seen_at {
       return Err(EventFeaturesError::InvalidSeenChronology {

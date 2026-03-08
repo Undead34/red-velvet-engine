@@ -117,7 +117,7 @@ pub struct RuleMetaDoc {
   pub name: String,
   pub description: Option<String>,
   pub version: String,
-  pub autor: String,
+  pub author: String,
   pub tags: Option<Vec<String>>,
 }
 

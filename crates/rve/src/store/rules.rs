@@ -90,7 +90,7 @@ fn high_value_untrusted_device() -> Rule {
         "Dispara si el monto es > $5000 y el fingerprint del dispositivo es nuevo.".into(),
       ),
       version: semver::Version::new(1, 0, 0),
-      autor: "Analista".into(),
+      author: "Analista".into(),
       tags: Some(vec!["high_value".into(), "device".into()]),
     },
     RulePolicy::new(
@@ -145,7 +145,7 @@ fn velocity_flag() -> Rule {
       name: "Velocity Retry Spike".into(),
       description: Some("Dispara si el cliente hace >3 intentos fallidos en 10 minutos".into()),
       version: semver::Version::new(1, 1, 0),
-      autor: "Fraud Squad".into(),
+      author: "Fraud Squad".into(),
       tags: Some(vec!["velocity".into(), "account_takeover".into()]),
     },
     RulePolicy::new(

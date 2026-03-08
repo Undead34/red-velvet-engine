@@ -14,7 +14,7 @@ fn valid_identity() -> RuleIdentity {
     name: "Test Rule".into(),
     description: Some("for tests".into()),
     version: semver::Version::new(1, 0, 0),
-    autor: "risk-team".into(),
+    author: "risk-team".into(),
     tags: Some(vec!["test".into()]),
   }
 }
