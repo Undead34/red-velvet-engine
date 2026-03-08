@@ -1,17 +1,17 @@
 use colored::*;
 use indoc::indoc;
 
-use rve_core::{ENGINE_CODENAME, ENGINE_EMOJI, PKG_DESCRIPTION, PKG_VERSION};
+use rve_core::{ENGINE_CODENAME, ENGINE_EMOJI, ENGINE_NAME, PKG_DESCRIPTION, PKG_VERSION};
 
-pub struct ReadyMsg(String);
+pub struct ByeMsg(String);
 
-impl Drop for ReadyMsg {
+impl Drop for ByeMsg {
   fn drop(&mut self) {
     println!("\n{}", self.0);
   }
 }
 
-pub fn show_banner(quiet: bool) -> Option<ReadyMsg> {
+pub fn show_banner(quiet: bool) -> Option<ByeMsg> {
   if quiet {
     return None;
   }
@@ -41,7 +41,8 @@ pub fn show_banner(quiet: bool) -> Option<ReadyMsg> {
   println!("\n{}", PKG_DESCRIPTION.bright_black().italic());
   println!("{}\n", "─".repeat(60).bright_black());
 
-  let ready = format!("🚀 {} is hot and ready.", "RVE").green().bold();
+  let ready =
+    format!("{} Thanks for using {}. Come back soon.", ENGINE_EMOJI, ENGINE_NAME).green().bold();
 
-  Some(ReadyMsg(ready.to_string()))
+  Some(ByeMsg(ready.to_string()))
 }

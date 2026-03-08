@@ -22,7 +22,7 @@ async fn main() -> ExitCode {
 async fn run() -> Result<(), AppError> {
   let app = App::new();
 
-  let _ready = banner::show_banner(app.quiet);
+  let _bye = banner::show_banner(app.quiet);
   logger::setup_logging(app.verbose, app.quiet);
 
   let _startup = info_span!("startup").entered();
@@ -35,7 +35,15 @@ async fn run() -> Result<(), AppError> {
 
   info!(target: "BANNER", "Listening on http://{}", addr);
 
-  axum::serve(listener, router).await.map_err(AppError::ServeFailed)?;
+  axum::serve(listener, router)
+    .with_graceful_shutdown(shutdown_signal())
+    .await
+    .map_err(AppError::ServeFailed)?;
 
   Ok(())
+}
+
+async fn shutdown_signal() {
+  tokio::signal::ctrl_c().await.expect("failed to install CTRL+C handler");
+  println!();
 }
