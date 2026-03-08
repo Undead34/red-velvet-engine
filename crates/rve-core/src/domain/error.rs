@@ -1,3 +1,4 @@
+use crate::domain::event::{EventError, EventFeaturesError, EventGeoError, EventPartyError};
 use crate::domain::rule::{RulePolicyError, RuleRolloutError, RuleScheduleError, RuleStateError};
 use thiserror::Error;
 
@@ -9,6 +10,9 @@ pub enum DomainError {
   /// Error from rule policy validation or transition rules.
   #[error(transparent)]
   RulePolicy(#[from] RulePolicyError),
+  /// Error from event domain validation.
+  #[error(transparent)]
+  Event(#[from] EventError),
 
   /// Rule expression is syntactically invalid or uses unsupported constructs.
   #[error("invalid rule expression: {0}")]
@@ -82,5 +86,23 @@ impl From<RuleRolloutError> for DomainError {
 impl From<RuleStateError> for DomainError {
   fn from(error: RuleStateError) -> Self {
     Self::RulePolicy(RulePolicyError::State(error))
+  }
+}
+
+impl From<EventGeoError> for DomainError {
+  fn from(error: EventGeoError) -> Self {
+    Self::Event(EventError::Geo(error))
+  }
+}
+
+impl From<EventPartyError> for DomainError {
+  fn from(error: EventPartyError) -> Self {
+    Self::Event(EventError::Party(error))
+  }
+}
+
+impl From<EventFeaturesError> for DomainError {
+  fn from(error: EventFeaturesError) -> Self {
+    Self::Event(EventError::Features(error))
   }
 }

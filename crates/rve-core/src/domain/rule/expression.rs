@@ -13,8 +13,16 @@ const MAX_NODE_COUNT: usize = 1_024;
 const MAX_STRING_VAR_LEN: usize = 512;
 
 /// Allowed root namespaces for `var` paths.
-pub const JSONLOGIC_ROOT_VARS: [&str; 7] =
-  ["event", "payload", "context", "signals", "extensions", "transaction", "device"];
+pub const JSONLOGIC_ROOT_VARS: [&str; 8] = [
+  "event",
+  "payload",
+  "context",
+  "features",
+  "signals",
+  "extensions",
+  "transaction",
+  "device",
+];
 
 /// Operators accepted by core static validation.
 pub const ALLOWED_OPERATORS: [&str; 61] = [

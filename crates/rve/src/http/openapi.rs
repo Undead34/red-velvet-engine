@@ -189,7 +189,11 @@ pub struct RuleDocumentInputDoc {
 
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct DecisionRequestDoc {
-  pub event: Value,
+  pub header: Value,
+  pub context: Value,
+  pub features: Value,
+  pub signals: Value,
+  pub payload: Value,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]

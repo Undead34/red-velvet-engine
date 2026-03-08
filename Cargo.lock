@@ -1046,6 +1046,7 @@ dependencies = [
 name = "rve-test-suite"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "rve-core",
  "semver",
  "serde_json",

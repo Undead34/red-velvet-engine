@@ -12,3 +12,4 @@ keywords.workspace = true
 rve-core = { path = "../rve-core" }
 serde_json = { workspace = true }
 semver = { version = "1.0.27", features = ["serde"] }
+chrono = { version = "0.4.43", features = ["serde"] }

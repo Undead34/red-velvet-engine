@@ -465,7 +465,7 @@ mod tests {
         "logic": {
           "and": [
             {"not_in": [{"var": "payload.money.ccy"}, ["USD", "EUR"]]},
-            {"=": [{"var": "context.fin.current_hour_count"}, 0]}
+            {"=": [{"var": "features.fin.current_hour_count"}, 0]}
           ]
         }
       },

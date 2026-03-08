@@ -165,12 +165,12 @@ fn velocity_flag() -> Rule {
     .expect("seed policy"),
     RuleDefinition::new(
       RuleEvaluation::new(
-        RuleExpression::new(json!({ ">": [{ "var": "context.fin.consecutive_declines" }, 0] }))
+        RuleExpression::new(json!({ ">": [{ "var": "features.fin.consecutive_declines" }, 0] }))
           .expect("seed condition"),
         RuleExpression::new(json!({
           "and": [
-            { ">=": [{ "var": "context.fin.current_hour_count" }, 5] },
-            { "<": [{ "var": "context.fin.last_seen_delta_minutes" }, 10] }
+            { ">=": [{ "var": "features.fin.current_hour_count" }, 5] },
+            { "<": [{ "var": "features.fin.last_seen_delta_minutes" }, 10] }
           ]
         }))
         .expect("seed logic"),
