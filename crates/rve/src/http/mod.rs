@@ -13,7 +13,7 @@ pub fn build_router(state: AppState) -> Router {
     .route("/health", get(health::handler))
     .nest("/api/v1", api_v1::router())
     .route("/api-docs/openapi.json", get(openapi_json))
-    .route("/docs", get(elements_docs))
+    .route("/api-docs", get(elements_docs))
     .with_state(state);
 
   add_dev_cors(router)
