@@ -26,6 +26,3 @@ pub struct RuleIdentity {
   /// Categorical labels used for filtering and aggregation.
   pub tags: Option<Vec<String>>,
 }
-
-/// Type alias for [`RuleIdentity`].
-pub type RuleMeta = RuleIdentity;

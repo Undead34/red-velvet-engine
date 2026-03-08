@@ -8,7 +8,7 @@ use rve_core::domain::{
   },
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value, json};
+use serde_json::Value;
 use utoipa::IntoParams;
 use validator::{Validate, ValidationError, ValidationErrors, ValidationErrorsKind};
 
@@ -99,7 +99,6 @@ pub struct RuleMetaInput {
   pub description: Option<String>,
   pub version: semver::Version,
   #[validate(length(min = 1, max = 120))]
-  #[serde(alias = "autor")]
   pub author: String,
   #[validate(length(max = 32))]
   pub tags: Option<Vec<String>>,
@@ -193,41 +192,12 @@ pub struct RuleEvaluationInput {
 
 impl RuleEvaluationInput {
   fn into_domain(self) -> ApiResult<RuleEvaluation> {
-    let condition = RuleExpression::new(normalize_expression_aliases(self.condition))
+    let condition = RuleExpression::new(self.condition)
       .map_err(|error| map_domain_error("evaluation.condition", error))?;
-    let logic = RuleExpression::new(normalize_expression_aliases(self.logic))
+    let logic = RuleExpression::new(self.logic)
       .map_err(|error| map_domain_error("evaluation.logic", error))?;
 
     Ok(RuleEvaluation { condition, logic })
-  }
-}
-
-fn normalize_expression_aliases(value: Value) -> Value {
-  match value {
-    Value::Object(values) => {
-      let mut normalized = Map::new();
-
-      for (op, arg) in values {
-        let normalized_arg = normalize_expression_aliases(arg);
-        match op.as_str() {
-          "=" => {
-            normalized.insert("==".to_owned(), normalized_arg);
-          }
-          "not_in" => {
-            normalized.insert("!".to_owned(), json!({ "in": normalized_arg }));
-          }
-          _ => {
-            normalized.insert(op, normalized_arg);
-          }
-        }
-      }
-
-      Value::Object(normalized)
-    }
-    Value::Array(values) => {
-      Value::Array(values.into_iter().map(normalize_expression_aliases).collect())
-    }
-    _ => value,
   }
 }
 
@@ -439,12 +409,12 @@ mod tests {
   }
 
   #[test]
-  fn normalizes_legacy_expression_operators() {
+  fn rejects_legacy_expression_operators() {
     let payload = json!({
       "meta": {
         "code": "RL01",
         "name": "High Value Payment",
-        "description": "legacy operators are normalized",
+        "description": "legacy operators are rejected",
         "version": "1.0.0",
         "author": "RiskOps"
       },
@@ -481,6 +451,21 @@ mod tests {
 
     let parsed: RuleDocumentInput = serde_json::from_value(payload).expect("payload parses");
     let result = parsed.into_rule(None);
-    assert!(result.is_ok(), "legacy operators must be normalized before validation: {result:?}");
+    match result {
+      Err(ApiError::Unprocessable(report)) => {
+        assert!(!report.errors.is_empty());
+      }
+      _ => panic!("expected unprocessable validation error"),
+    }
+  }
+
+  #[test]
+  fn rejects_legacy_author_alias() {
+    let mut payload = valid_rule_payload();
+    payload["meta"]["autor"] = json!("RiskOps");
+    payload["meta"].as_object_mut().expect("meta object").remove("author");
+
+    let parsed = serde_json::from_value::<RuleDocumentInput>(payload);
+    assert!(parsed.is_err());
   }
 }

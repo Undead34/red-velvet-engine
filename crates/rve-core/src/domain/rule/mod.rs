@@ -48,7 +48,7 @@ pub use definition::RuleDefinition;
 pub use enforcement::RuleEnforcement;
 pub use evaluation::RuleEvaluation;
 pub use expression::{JSONLOGIC_ROOT_VARS, RuleExpression};
-pub use meta::{RuleIdentity, RuleMeta};
+pub use meta::RuleIdentity;
 pub use mode::RuleMode;
 pub use policy::{RulePolicy, RulePolicyError};
 pub use rollout::{RolloutPolicy, RuleRolloutError};
