@@ -20,6 +20,7 @@ use rve_core::{
 use serde::Deserialize;
 use serde_json::Value;
 
+use crate::http::openapi::{DecisionRequestDoc, DecisionResponseDoc, ErrorResponse};
 use crate::http::state::AppState;
 
 use super::rules::errors::{ApiError, ApiResult};
@@ -29,13 +30,13 @@ use super::rules::errors::{ApiError, ApiResult};
   path = "/api/v1/decisions",
   tag = "decisions",
   request_body(
-    content = crate::http::openapi::DecisionRequestDoc,
+    content = DecisionRequestDoc,
     description = "Direct EventInput body (no `event` wrapper). `header.event_id` is optional but must be UUID when present. `features.fin` is currently strict (full object required). `payload.parties.originator` and `payload.parties.beneficiary` are required."
   ),
   responses(
-    (status = 200, description = "Decision evaluated. If no rules match, response is `outcome=allow` with empty `hits`.", body = crate::http::openapi::DecisionResponseDoc),
-    (status = 422, description = "Invalid event payload", body = crate::http::openapi::ErrorResponse),
-    (status = 500, description = "Decision engine evaluation failed", body = crate::http::openapi::ErrorResponse)
+    (status = 200, description = "Decision evaluated. If no rules match, response is `outcome=allow` with empty `hits`.", body = DecisionResponseDoc),
+    (status = 422, description = "Invalid event payload", body = ErrorResponse),
+    (status = 500, description = "Decision engine evaluation failed", body = ErrorResponse)
   )
 )]
 pub async fn create_decision(

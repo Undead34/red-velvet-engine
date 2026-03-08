@@ -20,10 +20,7 @@ pub enum DomainError {
 
   /// Rule function config is invalid for the selected function kind.
   #[error("invalid rule function config for `{kind}`: {reason}")]
-  InvalidRuleFunctionConfig {
-    kind: String,
-    reason: String,
-  },
+  InvalidRuleFunctionConfig { kind: String, reason: String },
 
   /// Rule identifier is invalid.
   #[error("invalid rule id: {0}")]

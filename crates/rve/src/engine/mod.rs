@@ -70,28 +70,19 @@ impl RVEngine {
   fn compile_rule(&self, rule: Rule) -> Result<CompiledRule, RuntimeEngineError> {
     let workflow = map_rule_to_dataflow_workflow(&rule)?;
 
-    let condition = self
-      .logic
-      .compile(rule.evaluation().condition.as_value())
-      .map_err(|error| RuntimeEngineError::Compilation {
-        rule_id: Some(rule.id.clone()),
-        message: error.to_string(),
+    let condition =
+      self.logic.compile(rule.evaluation().condition.as_value()).map_err(|error| {
+        RuntimeEngineError::Compilation {
+          rule_id: Some(rule.id.clone()),
+          message: error.to_string(),
+        }
       })?;
 
-    let logic = self
-      .logic
-      .compile(rule.evaluation().logic.as_value())
-      .map_err(|error| RuntimeEngineError::Compilation {
-        rule_id: Some(rule.id.clone()),
-        message: error.to_string(),
-      })?;
+    let logic = self.logic.compile(rule.evaluation().logic.as_value()).map_err(|error| {
+      RuntimeEngineError::Compilation { rule_id: Some(rule.id.clone()), message: error.to_string() }
+    })?;
 
-    Ok(CompiledRule {
-      rule,
-      _workflow: workflow,
-      condition,
-      logic,
-    })
+    Ok(CompiledRule { rule, _workflow: workflow, condition, logic })
   }
 
   pub fn evaluate(&self, event: &Event) -> Result<RuntimeEvaluation, RuntimeEngineError> {
@@ -112,23 +103,25 @@ impl RVEngine {
         continue;
       }
 
-      let condition_value = self.logic.evaluate(compiled.condition.as_ref(), Arc::clone(&context)).map_err(
-        |error| RuntimeEngineError::Evaluation {
+      let condition_value = self
+        .logic
+        .evaluate(compiled.condition.as_ref(), Arc::clone(&context))
+        .map_err(|error| RuntimeEngineError::Evaluation {
           rule_id: Some(compiled.rule.id.clone()),
           message: error.to_string(),
-        },
-      )?;
+        })?;
 
       if !is_truthy(&condition_value) {
         continue;
       }
 
-      let logic_value = self.logic.evaluate(compiled.logic.as_ref(), Arc::clone(&context)).map_err(
-        |error| RuntimeEngineError::Evaluation {
+      let logic_value = self
+        .logic
+        .evaluate(compiled.logic.as_ref(), Arc::clone(&context))
+        .map_err(|error| RuntimeEngineError::Evaluation {
           rule_id: Some(compiled.rule.id.clone()),
           message: error.to_string(),
-        },
-      )?;
+        })?;
 
       if !is_truthy(&logic_value) {
         continue;
@@ -218,10 +211,7 @@ fn dataflow_task_from_function(
 ) -> Result<dataflow_rs::engine::Task, RuntimeEngineError> {
   let mapped_function = map_rule_function_to_dataflow(function).map_err(|message| {
     RuntimeEngineError::Configuration {
-      message: format!(
-        "invalid function config at rule {} index {}: {message}",
-        rule.id, index
-      ),
+      message: format!("invalid function config at rule {} index {}: {message}", rule.id, index),
     }
   })?;
 
@@ -236,13 +226,11 @@ fn dataflow_task_from_function(
   })
 }
 
-fn map_rule_function_to_dataflow(function: &RuleFunctionSpec) -> Result<DataflowFunctionConfig, String> {
-  let format = function
-    .config
-    .get("format")
-    .and_then(Value::as_str)
-    .unwrap_or("json")
-    .to_ascii_lowercase();
+fn map_rule_function_to_dataflow(
+  function: &RuleFunctionSpec,
+) -> Result<DataflowFunctionConfig, String> {
+  let format =
+    function.config.get("format").and_then(Value::as_str).unwrap_or("json").to_ascii_lowercase();
 
   let maybe_builtin_name = match function.kind {
     FunctionKind::Map => Some("map"),
@@ -268,10 +256,7 @@ fn map_rule_function_to_dataflow(function: &RuleFunctionSpec) -> Result<Dataflow
       .and_then(Value::as_str)
       .ok_or_else(|| "custom function requires `config.name`".to_owned())?;
     let input = function.config.get("input").cloned().unwrap_or_else(|| function.config.clone());
-    return Ok(DataflowFunctionConfig::Custom {
-      name: name.to_owned(),
-      input,
-    });
+    return Ok(DataflowFunctionConfig::Custom { name: name.to_owned(), input });
   }
 
   Ok(DataflowFunctionConfig::Custom {
@@ -286,10 +271,11 @@ fn map_rule_function_to_dataflow(function: &RuleFunctionSpec) -> Result<Dataflow
 }
 
 fn map_event_to_dataflow_message(event: &Event) -> Result<DataflowMessage, RuntimeEngineError> {
-  let payload = serde_json::to_value(&event.payload).map_err(|error| RuntimeEngineError::Evaluation {
-    rule_id: None,
-    message: format!("failed to serialize event payload: {error}"),
-  })?;
+  let payload =
+    serde_json::to_value(&event.payload).map_err(|error| RuntimeEngineError::Evaluation {
+      rule_id: None,
+      message: format!("failed to serialize event payload: {error}"),
+    })?;
 
   let mut message = DataflowMessage::from_value(&payload);
   message.context["data"] = json!({
@@ -361,7 +347,6 @@ mod tests {
   use std::collections::{BTreeMap, HashSet};
 
   use chrono::Utc;
-  use rve_core::services::engine::Decision;
   use rve_core::domain::{
     common::{AccountId, Currency, EventSource, Flag, RuleId, Score, Severity, TimestampMs},
     event::{
@@ -373,6 +358,7 @@ mod tests {
       RuleEvaluation, RuleExpression, RuleIdentity, RuleMode, RulePolicy, RuleSchedule, RuleState,
     },
   };
+  use rve_core::services::engine::Decision;
   use serde_json::json;
 
   use super::RVEngine;

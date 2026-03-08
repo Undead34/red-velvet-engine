@@ -47,23 +47,13 @@ pub struct RuntimeEvaluation {
 #[derive(Debug, Error, Clone, Serialize, Deserialize)]
 pub enum RuntimeEngineError {
   #[error("runtime compilation error for {rule_id:?}: {message}")]
-  Compilation {
-    rule_id: Option<RuleId>,
-    message: String,
-  },
+  Compilation { rule_id: Option<RuleId>, message: String },
   #[error("runtime evaluation error for {rule_id:?}: {message}")]
-  Evaluation {
-    rule_id: Option<RuleId>,
-    message: String,
-  },
+  Evaluation { rule_id: Option<RuleId>, message: String },
   #[error("runtime configuration error: {message}")]
-  Configuration {
-    message: String,
-  },
+  Configuration { message: String },
   #[error("runtime internal error: {message}")]
-  Internal {
-    message: String,
-  },
+  Internal { message: String },
 }
 
 #[async_trait]

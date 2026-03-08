@@ -8,10 +8,7 @@ use thiserror::Error;
 use tokio::sync::RwLock;
 use tracing::error;
 
-use crate::{
-  engine::RVEngine,
-  store::InMemoryRuleRepository,
-};
+use crate::{engine::RVEngine, store::InMemoryRuleRepository};
 
 #[derive(Clone)]
 pub struct AppState {

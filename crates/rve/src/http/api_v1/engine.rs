@@ -2,6 +2,7 @@ use axum::{Json, extract::State, http::StatusCode};
 use serde::Serialize;
 use tracing::error;
 
+use crate::http::openapi::{EngineStatusResponseDoc, ErrorResponse, ReloadResponseDoc};
 use crate::http::state::AppState;
 
 #[derive(Serialize)]
@@ -24,20 +25,20 @@ pub struct EngineStatusResponse {
   path = "/api/v1/engine/status",
   tag = "engine",
   responses(
-    (status = 200, description = "Current engine runtime status", body = crate::http::openapi::EngineStatusResponseDoc),
-    (status = 500, description = "Failed to read runtime status", body = crate::http::openapi::ErrorResponse)
+    (status = 200, description = "Current engine runtime status", body = EngineStatusResponseDoc),
+    (status = 500, description = "Failed to read runtime status", body = ErrorResponse)
   )
 )]
 pub async fn status(
   State(state): State<AppState>,
-) -> Result<Json<EngineStatusResponse>, (StatusCode, Json<crate::http::openapi::ErrorResponse>)> {
+) -> Result<Json<EngineStatusResponse>, (StatusCode, Json<ErrorResponse>)> {
   let repository_rules = match state.rule_repo.all().await {
     Ok(rules) => rules.len() as u32,
     Err(err) => {
       error!(target: "BANNER", %err, operation = "status", "failed to read repository rules");
       return Err((
         StatusCode::INTERNAL_SERVER_ERROR,
-        Json(crate::http::openapi::ErrorResponse {
+        Json(ErrorResponse {
           code: "internal_error".to_owned(),
           message: "failed to read runtime status".to_owned(),
           validation: None,
@@ -62,18 +63,18 @@ pub async fn status(
   path = "/api/v1/engine/reload",
   tag = "engine",
   responses(
-    (status = 200, description = "Engine rules reloaded", body = crate::http::openapi::ReloadResponseDoc),
-    (status = 500, description = "Failed to reload engine rules", body = crate::http::openapi::ErrorResponse)
+    (status = 200, description = "Engine rules reloaded", body = ReloadResponseDoc),
+    (status = 500, description = "Failed to reload engine rules", body = ErrorResponse)
   )
 )]
 pub async fn reload(
   State(state): State<AppState>,
-) -> Result<Json<ReloadResponse>, (StatusCode, Json<crate::http::openapi::ErrorResponse>)> {
+) -> Result<Json<ReloadResponse>, (StatusCode, Json<ErrorResponse>)> {
   if let Err(err) = state.reload_rules().await {
     error!(target: "BANNER", %err, operation = "reload", "failed to refresh engine ruleset");
     return Err((
       StatusCode::INTERNAL_SERVER_ERROR,
-      Json(crate::http::openapi::ErrorResponse {
+      Json(ErrorResponse {
         code: "internal_error".to_owned(),
         message: "failed to refresh engine ruleset".to_owned(),
         validation: None,

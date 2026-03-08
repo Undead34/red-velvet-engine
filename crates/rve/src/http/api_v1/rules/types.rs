@@ -2,10 +2,9 @@ use rve_core::domain::{
   DomainError,
   common::{RuleId, Score, Severity, TimestampMs},
   rule::{
-    RolloutPolicy, Rule, RuleAction, RuleAudit, RuleDecision, RuleDefinition, RuleEnforcement,
-    FunctionKind, RuleEvaluation, RuleExpression, RuleFunctionSpec, RuleIdentity, RulePolicy,
-    RuleSchedule, RuleState,
-    mode::RuleMode,
+    FunctionKind, RolloutPolicy, Rule, RuleAction, RuleAudit, RuleDecision, RuleDefinition,
+    RuleEnforcement, RuleEvaluation, RuleExpression, RuleFunctionSpec, RuleIdentity, RulePolicy,
+    RuleSchedule, RuleState, mode::RuleMode,
   },
 };
 use serde::{Deserialize, Serialize};

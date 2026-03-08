@@ -112,8 +112,8 @@ mod tests {
 
   #[test]
   fn rejects_custom_without_name() {
-    let error =
-      RuleFunctionSpec::new(FunctionKind::Custom, json!({"input": {"x": 1}})).expect_err("must fail");
+    let error = RuleFunctionSpec::new(FunctionKind::Custom, json!({"input": {"x": 1}}))
+      .expect_err("must fail");
     assert!(matches!(error, DomainError::InvalidRuleFunctionConfig { .. }));
   }
 }

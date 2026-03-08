@@ -8,8 +8,8 @@ use crate::{
     rule::RuleAction,
   },
   ports::{
-    RuleRepositoryError, RuleRepositoryPort, RulesetSnapshot, RuntimeEngineError, RuntimeEnginePort,
-    RuntimeEvaluation, RuntimeHit,
+    RuleRepositoryError, RuleRepositoryPort, RulesetSnapshot, RuntimeEngineError,
+    RuntimeEnginePort, RuntimeEvaluation, RuntimeHit,
   },
 };
 

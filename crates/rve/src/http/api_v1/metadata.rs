@@ -170,8 +170,7 @@ fn supported_fields() -> Vec<FieldMetadata> {
       allowed_values: None,
       examples: vec![json!(0.2), json!(0.8)],
       group: "extensions.device",
-      description:
-        "Score de confianza del dispositivo en `payload.extensions.device.trust_score` (opcional).",
+      description: "Score de confianza del dispositivo en `payload.extensions.device.trust_score` (opcional).",
     },
     FieldMetadata {
       path: "transaction.amount",
@@ -181,8 +180,7 @@ fn supported_fields() -> Vec<FieldMetadata> {
       allowed_values: None,
       examples: vec![json!(1500), json!(7500)],
       group: "extensions.transaction",
-      description:
-        "Monto en `payload.extensions.transaction.amount` (opcional, no sustituye `payload.money.value`).",
+      description: "Monto en `payload.extensions.transaction.amount` (opcional, no sustituye `payload.money.value`).",
     },
   ]
 }
