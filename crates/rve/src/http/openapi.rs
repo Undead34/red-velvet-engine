@@ -35,14 +35,10 @@ use utoipa::{OpenApi, ToSchema};
       RolloutPolicyDoc,
       RuleEvaluationDoc,
       RuleEnforcementDoc,
-      DecisionResponseDoc,
-      DecisionHitDoc,
       EngineStatusResponseDoc,
-      ReloadResponseDoc,
       RuleListResponseDoc,
       PaginationMetaDoc,
       RuleDocumentInputDoc,
-      DecisionRequestDoc,
       FieldsResponseDoc,
       FieldMetadataDoc,
       ContractResponseDoc,
@@ -53,7 +49,7 @@ use utoipa::{OpenApi, ToSchema};
     (name = "health", description = "Health endpoints"),
     (name = "rules", description = "Rules CRUD and validation"),
     (name = "engine", description = "Engine lifecycle operations"),
-    (name = "decisions", description = "Decision endpoint"),
+    (name = "decisions", description = "Decision endpoint placeholder"),
     (name = "metadata", description = "Builder metadata and contract")
   )
 )]
@@ -180,18 +176,21 @@ pub struct RuleEnforcementDoc {
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
-pub struct ReloadResponseDoc {
-  pub status: String,
-  pub message: String,
-}
-
-#[derive(Serialize, Deserialize, ToSchema)]
+#[schema(
+  example = json!({
+    "mode": "placeholder",
+    "ready": false,
+    "repository_rules": 2,
+    "loaded_rules": 0,
+    "message": "runtime engine is not implemented"
+  })
+)]
 pub struct EngineStatusResponseDoc {
-  pub ruleset_version: u64,
-  pub loaded_rules: u32,
+  pub mode: String,
+  pub ready: bool,
   pub repository_rules: u32,
-  pub last_reload_at_ms: Option<u64>,
-  pub last_reload_error: Option<String>,
+  pub loaded_rules: u32,
+  pub message: String,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]

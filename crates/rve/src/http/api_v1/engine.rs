@@ -2,22 +2,16 @@ use axum::{Json, extract::State, http::StatusCode};
 use serde::Serialize;
 use tracing::error;
 
-use crate::http::openapi::{EngineStatusResponseDoc, ErrorResponse, ReloadResponseDoc};
+use crate::http::openapi::{EngineStatusResponseDoc, ErrorResponse};
 use crate::http::state::AppState;
 
 #[derive(Serialize)]
-pub struct ReloadResponse {
-  pub status: &'static str,
-  pub message: &'static str,
-}
-
-#[derive(Serialize)]
 pub struct EngineStatusResponse {
-  pub ruleset_version: u64,
-  pub loaded_rules: u32,
+  pub mode: &'static str,
+  pub ready: bool,
   pub repository_rules: u32,
-  pub last_reload_at_ms: Option<u64>,
-  pub last_reload_error: Option<String>,
+  pub loaded_rules: u32,
+  pub message: &'static str,
 }
 
 #[utoipa::path(
@@ -25,7 +19,7 @@ pub struct EngineStatusResponse {
   path = "/api/v1/engine/status",
   tag = "engine",
   responses(
-    (status = 200, description = "Current engine runtime status", body = EngineStatusResponseDoc),
+    (status = 200, description = "Current placeholder runtime status", body = EngineStatusResponseDoc),
     (status = 500, description = "Failed to read runtime status", body = ErrorResponse)
   )
 )]
@@ -47,14 +41,12 @@ pub async fn status(
     }
   };
 
-  let runtime = state.engine_runtime_status().await;
-
   Ok(Json(EngineStatusResponse {
-    ruleset_version: runtime.ruleset_version,
-    loaded_rules: runtime.loaded_rules,
+    mode: "placeholder",
+    ready: false,
     repository_rules,
-    last_reload_at_ms: runtime.last_reload_at_ms,
-    last_reload_error: runtime.last_reload_error,
+    loaded_rules: 0,
+    message: "runtime engine is not implemented",
   }))
 }
 
@@ -63,24 +55,16 @@ pub async fn status(
   path = "/api/v1/engine/reload",
   tag = "engine",
   responses(
-    (status = 200, description = "Engine rules reloaded", body = ReloadResponseDoc),
-    (status = 500, description = "Failed to reload engine rules", body = ErrorResponse)
+    (status = 501, description = "Runtime reload is not implemented yet", body = ErrorResponse)
   )
 )]
-pub async fn reload(
-  State(state): State<AppState>,
-) -> Result<Json<ReloadResponse>, (StatusCode, Json<ErrorResponse>)> {
-  if let Err(err) = state.reload_rules().await {
-    error!(target: "BANNER", %err, operation = "reload", "failed to refresh engine ruleset");
-    return Err((
-      StatusCode::INTERNAL_SERVER_ERROR,
-      Json(ErrorResponse {
-        code: "internal_error".to_owned(),
-        message: "failed to refresh engine ruleset".to_owned(),
-        validation: None,
-      }),
-    ));
-  }
-
-  Ok(Json(ReloadResponse { status: "ok", message: "engine rules reloaded" }))
+pub async fn reload() -> (StatusCode, Json<ErrorResponse>) {
+  (
+    StatusCode::NOT_IMPLEMENTED,
+    Json(ErrorResponse {
+      code: "not_implemented".to_owned(),
+      message: "runtime reload is not implemented yet".to_owned(),
+      validation: None,
+    }),
+  )
 }

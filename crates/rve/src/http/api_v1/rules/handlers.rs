@@ -50,7 +50,7 @@ pub async fn list_rules(
 /// Create a new rule
 ///
 /// Parses and validates the provided payload, persists the new rule in the repository,
-/// The engine is not reloaded automatically; trigger `/api/v1/engine/reload` explicitly.
+/// Runtime execution is currently unavailable; writes affect the repository only.
 /// Non-fatal validation warnings are logged but will not prevent creation.
 #[utoipa::path(
   post,
@@ -126,7 +126,7 @@ pub async fn get_rule(
 ///
 /// Fully replaces the configuration of a rule identified by its UUID.
 /// Validates the new payload and updates the repository.
-/// The engine is not reloaded automatically; trigger `/api/v1/engine/reload` explicitly.
+/// Runtime execution is currently unavailable; writes affect the repository only.
 /// Non-fatal validation warnings are logged but will not prevent the update.
 #[utoipa::path(
   put,
@@ -183,7 +183,7 @@ pub async fn update_rule(
 /// Delete a rule
 ///
 /// Permanently removes a rule from the system using its unique identifier.
-/// The engine is not reloaded automatically; trigger `/api/v1/engine/reload` explicitly.
+/// Runtime execution is currently unavailable; writes affect the repository only.
 #[utoipa::path(
   delete,
   path = "/api/v1/rules/{id}",
@@ -225,7 +225,7 @@ pub async fn delete_rule(
 /// Applies a partial update or JSON patch to an existing rule identified by its UUID.
 /// The system fetches the current rule, applies the changes, and validates the final state.
 /// If valid, the repository is updated.
-/// The engine is not reloaded automatically; trigger `/api/v1/engine/reload` explicitly.
+/// Runtime execution is currently unavailable; writes affect the repository only.
 /// Non-fatal validation warnings are logged but will not prevent the patch.
 #[utoipa::path(
   patch,

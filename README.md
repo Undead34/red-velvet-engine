@@ -79,11 +79,11 @@ curl -s http://localhost:3439/api/v1/rules | jq
 - `GET /status`
 - `GET/POST /api/v1/rules`
 - `GET/PUT/PATCH/DELETE /api/v1/rules/{id}`
-- `POST /api/v1/decisions`
+- `POST /api/v1/decisions` (placeholder, returns `501`)
 - `GET /api/v1/metadata/fields`
 - `GET /api/v1/metadata/contract`
-- `GET /api/v1/engine/status`
-- `POST /api/v1/engine/reload`
+- `GET /api/v1/engine/status` (placeholder runtime status)
+- `POST /api/v1/engine/reload` (placeholder, returns `501`)
 - `GET /docs`
 - `GET /api-docs/openapi.json`
 

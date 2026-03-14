@@ -61,8 +61,10 @@ If your rules rely on `transaction.*` or `device.*`, your events must include th
 ## 3. Runtime behavior notes
 
 - Rules are persisted via `/api/v1/rules*`.
-- The runtime engine is reloaded explicitly via `POST /api/v1/engine/reload`.
-- If reload is not called, new/updated/deleted rules may not be active in evaluation.
+- The decision runtime is currently a placeholder.
+- `POST /api/v1/decisions` returns `501 Not Implemented`.
+- `GET /api/v1/engine/status` exposes placeholder status only.
+- `POST /api/v1/engine/reload` returns `501 Not Implemented`.
 
 ## 4. Error model
 
@@ -128,72 +130,22 @@ curl -sS -X POST http://localhost:3439/api/v1/rules \
   }' | jq
 ```
 
-### 5.2 Create decision (direct body)
+### 5.2 Decision endpoint placeholder
 
 ```bash
 curl -sS -X POST http://localhost:3439/api/v1/decisions \
   -H 'content-type: application/json' \
-  -d '{
-    "header": {
-      "timestamp": "2026-03-08T00:00:00Z",
-      "source": "checkout",
-      "event_id": "evt_123",
-      "instrument": "card",
-      "channel": "web"
-    },
-    "context": {
-      "geo": { "country": "US", "lat": 40.71, "lon": -74.01 },
-      "net": { "source_ip": "203.0.113.10" },
-      "env": { "device_id": "dev_1", "session_id": "sess_1" }
-    },
-    "features": {
-      "fin": {
-        "first_seen_at": 1730000000000,
-        "last_seen_at": 1730000005000,
-        "last_declined_at": null,
-        "total_successful_txns": 12,
-        "total_declined_txns": 1,
-        "total_amount_spent": 150000,
-        "max_ticket_ever": 45000,
-        "consecutive_failed_logins": 0,
-        "consecutive_declines": 0,
-        "current_hour_count": 2,
-        "current_hour_amount": 1500,
-        "current_day_count": 3,
-        "current_day_amount": 1500,
-        "known_ips": ["203.0.113.10"],
-        "known_devices": ["dev_1"]
-      }
-    },
-    "signals": { "flags": {} },
-    "payload": {
-      "money": { "value": 1500.0, "ccy": "USD" },
-      "parties": {
-        "originator": {
-          "entity_type": "individual",
-          "acct": "acc_1",
-          "country": "US",
-          "bank": "bank_1",
-          "kyc": "tier_2",
-          "watchlist": "no",
-          "sanctions_score": 0.01
-        },
-        "beneficiary": {
-          "entity_type": "business",
-          "acct": "acc_2",
-          "country": "US",
-          "bank": "bank_2",
-          "kyc": "tier_3",
-          "watchlist": "no",
-          "sanctions_score": 0.0
-        }
-      },
-      "extensions": {
-        "transaction": { "amount": 1500 },
-        "device": { "trust_score": 0.7 }
-      }
-    }
-  }' | jq
+  -d '{ \"sample\": \"payload\" }' | jq
+```
+
+Current response:
+
+```json
+{
+  "code": "not_implemented",
+  "message": "decision runtime is not implemented yet",
+  "validation": null
+}
 ```
 
 ## 6. Integration checklist
@@ -201,4 +153,4 @@ curl -sS -X POST http://localhost:3439/api/v1/decisions \
 - Build rules using canonical paths first (`payload.*`, `features.*`, `signals.*`).
 - Use extension paths (`transaction.*`, `device.*`) only if your producer sends `payload.extensions`.
 - Keep `score_impact` in the documented range.
-- Call `POST /api/v1/engine/reload` after rule writes.
+- Treat `/api/v1/decisions` and `/api/v1/engine/reload` as placeholders until the runtime is reintroduced.

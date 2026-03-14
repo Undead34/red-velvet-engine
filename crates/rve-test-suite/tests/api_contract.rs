@@ -313,7 +313,7 @@ async fn rejects_disallowed_var_roots_in_rule_payload() {
 }
 
 #[tokio::test]
-async fn accepts_direct_event_body() {
+async fn decisions_returns_placeholder_for_any_valid_json() {
   let app = app().await;
 
   let response = app
@@ -328,11 +328,13 @@ async fn accepts_direct_event_body() {
     .await
     .expect("decision response");
 
-  assert_eq!(response.status(), StatusCode::OK);
+  assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
+  let body = response_json(response).await;
+  assert_eq!(body["code"], "not_implemented");
 }
 
 #[tokio::test]
-async fn rejects_old_wrapper_shape() {
+async fn decisions_placeholder_does_not_validate_wrapper_shape() {
   let app = app().await;
   let payload = json!({ "event": valid_event_payload() });
 
@@ -348,31 +350,63 @@ async fn rejects_old_wrapper_shape() {
     .await
     .expect("decision response");
 
-  assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
-  let body = to_bytes(response.into_body(), usize::MAX).await.expect("read response body");
-  let body = String::from_utf8(body.to_vec()).expect("utf8 body");
-  assert!(body.contains("unknown field `event`"), "unexpected body: {body}");
+  assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
+  let body = response_json(response).await;
+  assert_eq!(body["code"], "not_implemented");
 }
 
 #[tokio::test]
-async fn rejects_invalid_geo_latitude_with_422_mapping() {
+async fn engine_status_reports_placeholder_runtime() {
   let app = app().await;
-  let mut payload = valid_event_payload();
-  payload["context"]["geo"]["lat"] = json!(123.0);
+  let list_response = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("GET")
+        .uri("/api/v1/rules")
+        .body(Body::empty())
+        .expect("build rules request"),
+    )
+    .await
+    .expect("rules response");
+  let list_body = response_json(list_response).await;
+  let repository_rules = list_body["data"].as_array().expect("rules array").len() as u64;
+
+  let response = app
+    .oneshot(
+      Request::builder()
+        .method("GET")
+        .uri("/api/v1/engine/status")
+        .body(Body::empty())
+        .expect("build request"),
+    )
+    .await
+    .expect("status response");
+
+  assert_eq!(response.status(), StatusCode::OK);
+  let body = response_json(response).await;
+  assert_eq!(body["mode"], "placeholder");
+  assert_eq!(body["ready"], false);
+  assert_eq!(body["loaded_rules"], 0);
+  assert_eq!(body["repository_rules"], repository_rules);
+}
+
+#[tokio::test]
+async fn engine_reload_returns_placeholder_error() {
+  let app = app().await;
 
   let response = app
     .oneshot(
       Request::builder()
         .method("POST")
-        .uri("/api/v1/decisions")
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(payload.to_string()))
+        .uri("/api/v1/engine/reload")
+        .body(Body::empty())
         .expect("build request"),
     )
     .await
-    .expect("decision response");
+    .expect("reload response");
 
-  assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+  assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
   let body = response_json(response).await;
-  assert_eq!(body["validation"]["errors"][0]["path"], "context.geo.lat");
+  assert_eq!(body["code"], "not_implemented");
 }
