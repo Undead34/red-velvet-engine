@@ -9,8 +9,27 @@ use super::Currency;
 /// `Money` is a domain value object with exact arithmetic semantics:
 /// amount and currency are inseparable.
 ///
-/// Internally, values are stored in minor units (for example cents for USD)
+/// Internally, values are stored in **minor units** (for example cents for USD)
 /// according to the ISO-4217 exponent of the currency.
+///
+/// Terminology:
+/// - **major units**: human-facing amount (`"12.34"` USD means 12 dollars + 34 cents)
+/// - **minor units**: smallest integer unit (for USD, `1234`)
+/// - **ccy**: currency code (ISO-4217), e.g. `USD`, `JPY`, `KWD`
+///
+/// # Examples
+///
+/// ```
+/// use rve_core::domain::common::{Currency, Money};
+///
+/// let usd = Currency::new("USD").unwrap();
+///
+/// let from_major = Money::from_major_str("12.34", usd).unwrap();
+/// assert_eq!(from_major.minor_units(), 1_234);
+///
+/// let from_minor = Money::from_minor(1_234, Currency::new("USD").unwrap()).unwrap();
+/// assert_eq!(from_minor.value(), 12.34);
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Money {
   minor_units: u64,
@@ -34,13 +53,48 @@ pub enum MoneyError {
 
 impl Money {
   /// Creates money from exact minor units.
+  ///
+  /// Use this constructor when data is already normalized to integer minor
+  /// units (for example persisted values, ledger rows, or internal messages).
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// use rve_core::domain::common::{Currency, Money};
+  ///
+  /// let money = Money::from_minor(1_050, Currency::new("USD").unwrap()).unwrap();
+  /// assert_eq!(money.value(), 10.5);
+  /// ```
   pub fn from_minor(minor_units: u64, ccy: Currency) -> Result<Self, MoneyError> {
     Ok(Self { minor_units, ccy })
   }
 
   /// Creates money from a decimal major-unit string.
   ///
-  /// Example: `"123.45"` in `USD` -> `12345` minor units.
+  /// This parser accepts canonical decimal format with `.` as separator.
+  /// Locale-specific input (such as `"123,45"`) is rejected and should be
+  /// normalized at the API/UI boundary.
+  ///
+  /// # Errors
+  ///
+  /// - [`MoneyError::InvalidFormat`] for malformed decimal strings.
+  /// - [`MoneyError::NegativeAmount`] for values below zero.
+  /// - [`MoneyError::ScaleMismatch`] when fractional digits exceed currency precision.
+  /// - [`MoneyError::Overflow`] when numeric conversion overflows.
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// use rve_core::domain::common::{Currency, Money};
+  ///
+  /// let usd = Currency::new("USD").unwrap();
+  /// let jpy = Currency::new("JPY").unwrap();
+  ///
+  /// let usd_money = Money::from_major_str("123.45", usd).unwrap();
+  /// assert_eq!(usd_money.minor_units(), 12_345);
+  ///
+  /// assert!(Money::from_major_str("123.45", jpy).is_err());
+  /// ```
   pub fn from_major_str(value: &str, ccy: Currency) -> Result<Self, MoneyError> {
     let value = value.trim();
     if value.is_empty() {
@@ -56,7 +110,9 @@ impl Money {
       return Err(MoneyError::InvalidFormat(value.to_owned()));
     }
 
-    let whole = parts[0].parse::<u64>().map_err(|_| MoneyError::InvalidFormat(value.to_owned()))?;
+    let whole_str = if parts[0].is_empty() { "0" } else { parts[0] };
+    let whole =
+      whole_str.parse::<u64>().map_err(|_| MoneyError::InvalidFormat(value.to_owned()))?;
 
     let frac = if parts.len() == 2 { parts[1] } else { "" };
     if !frac.chars().all(|c| c.is_ascii_digit()) {
@@ -93,17 +149,28 @@ impl Money {
     self.minor_units
   }
 
+  /// Returns the ISO-4217 currency code associated with this amount.
   #[must_use]
   pub fn ccy(&self) -> &Currency {
     &self.ccy
   }
 
+  /// Returns a floating-point representation in major units.
+  ///
+  /// This is provided for display/interoperability. Domain arithmetic should
+  /// continue to use `minor_units` and checked operations.
   #[must_use]
   pub fn value(&self) -> f64 {
     self.minor_units as f64
       / ten_pow_u64(self.ccy.exponent()).expect("currency exponent must fit") as f64
   }
 
+  /// Adds two amounts of the same currency.
+  ///
+  /// # Errors
+  ///
+  /// Returns [`MoneyError::CurrencyMismatch`] when currencies differ.
+  /// Returns [`MoneyError::Overflow`] on integer overflow.
   pub fn checked_add(&self, other: &Self) -> Result<Self, MoneyError> {
     ensure_same_currency(self, other)?;
     let minor_units =
@@ -111,6 +178,12 @@ impl Money {
     Self::from_minor(minor_units, self.ccy.clone())
   }
 
+  /// Subtracts two amounts of the same currency.
+  ///
+  /// # Errors
+  ///
+  /// Returns [`MoneyError::CurrencyMismatch`] when currencies differ.
+  /// Returns [`MoneyError::NegativeAmount`] if subtraction would go below zero.
   pub fn checked_sub(&self, other: &Self) -> Result<Self, MoneyError> {
     ensure_same_currency(self, other)?;
     let minor_units =

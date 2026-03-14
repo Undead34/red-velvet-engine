@@ -8,11 +8,25 @@ use crate::domain::DomainError;
 pub use iso4217_catalog::{CATALOG_VERSION, CurrencyStatus};
 pub type CurrencySpec = CurrencyMeta;
 
+/// ISO-4217 currency code validated against the generated catalog.
+///
+/// `Currency` is a lightweight domain wrapper around [`CurrencyCode`] with
+/// serde support and domain-oriented constructors.
+///
+/// Notes:
+/// - `ccy` in domain payloads refers to this type.
+/// - Exponent/minor-unit precision comes from the catalog generated at
+///   compile-time from SIX `list-one.xml`.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(try_from = "String", into = "String")]
 pub struct Currency(CurrencyCode);
 
 impl Currency {
+  /// Creates a currency from a 3-letter ISO code (for example `"USD"`).
+  ///
+  /// # Errors
+  ///
+  /// Returns [`DomainError::InvalidCurrencyCode`] when code is unknown.
   pub fn new(value: impl Into<String>) -> Result<Self, DomainError> {
     let value = value.into();
     let code = CurrencyCode::from_str(&value)
@@ -25,6 +39,7 @@ impl Currency {
     Self(code)
   }
 
+  /// Returns currency from numeric ISO code (for example `840` -> `USD`).
   pub fn from_numeric(value: u16) -> Option<Self> {
     CurrencyCode::try_from(value).ok().map(Self)
   }
@@ -34,6 +49,7 @@ impl Currency {
     self.0
   }
 
+  /// Returns the alpha code (e.g. `"USD"`, `"JPY"`).
   #[must_use]
   pub fn as_str(&self) -> &'static str {
     self.0.alpha()
@@ -44,6 +60,12 @@ impl Currency {
     self.0.meta()
   }
 
+  /// Returns the ISO minor-unit exponent (digits after decimal point).
+  ///
+  /// Examples:
+  /// - USD -> `2`
+  /// - JPY -> `0`
+  /// - KWD -> `3`
   #[must_use]
   pub fn exponent(&self) -> u8 {
     self.0.digit().unwrap_or(0)
