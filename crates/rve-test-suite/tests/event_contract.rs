@@ -72,7 +72,8 @@ fn valid_event() -> Event {
   let signals = Signals { flags: BTreeMap::from([(Signal::Vpn, Flag::No)]) };
 
   let payload = Payload {
-    money: rve_core::domain::common::Money::new(100.5, Currency::new("USD").unwrap()).unwrap(),
+    money: rve_core::domain::common::Money::from_major_str("100.5", Currency::new("USD").unwrap())
+      .unwrap(),
     parties: Parties {
       originator: Party::new(
         rve_core::domain::common::EntityType::Individual,
@@ -104,7 +105,7 @@ fn valid_event() -> Event {
 #[test]
 fn creates_valid_event() {
   let event = valid_event();
-  assert_eq!(event.payload.money.ccy.as_str(), "USD");
+  assert_eq!(event.payload.money.ccy().as_str(), "USD");
 }
 
 #[test]
