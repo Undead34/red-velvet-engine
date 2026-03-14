@@ -1,4 +1,4 @@
-use crate::domain::common::TimestampMsError;
+use crate::domain::common::{MoneyError, TimestampMsError};
 use crate::domain::event::{EventError, EventFeaturesError, EventGeoError, EventPartyError};
 use crate::domain::rule::{RulePolicyError, RuleRolloutError, RuleScheduleError, RuleStateError};
 use thiserror::Error;
@@ -66,8 +66,8 @@ pub enum DomainError {
   #[error("invalid channel: {0}")]
   InvalidChannel(String),
 
-  #[error("invalid money amount: {0}")]
-  InvalidMoneyAmount(String),
+  #[error(transparent)]
+  Money(#[from] MoneyError),
 
   #[error(transparent)]
   TimestampMs(#[from] TimestampMsError),

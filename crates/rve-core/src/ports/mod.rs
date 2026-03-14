@@ -52,6 +52,8 @@ pub enum RuntimeEngineError {
   Evaluation { rule_id: Option<RuleId>, message: String },
   #[error("runtime configuration error: {message}")]
   Configuration { message: String },
+  #[error("runtime engine not implemented: {message}")]
+  NotImplemented { message: String },
   #[error("runtime internal error: {message}")]
   Internal { message: String },
 }
@@ -61,4 +63,22 @@ pub trait RuntimeEnginePort: Send + Sync {
   async fn publish_rules(&self, rules: Vec<Rule>) -> Result<RulesetSnapshot, RuntimeEngineError>;
 
   async fn evaluate(&self, event: &Event) -> Result<RuntimeEvaluation, RuntimeEngineError>;
+}
+
+#[cfg(test)]
+mod tests {
+  use super::RuntimeEngineError;
+
+  #[test]
+  fn not_implemented_error_is_structured() {
+    let error = RuntimeEngineError::NotImplemented {
+      message: "runtime engine is not implemented yet".to_owned(),
+    };
+
+    assert!(matches!(error, RuntimeEngineError::NotImplemented { .. }));
+    assert_eq!(
+      error.to_string(),
+      "runtime engine not implemented: runtime engine is not implemented yet"
+    );
+  }
 }

@@ -1,49 +1,161 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use thiserror::Error;
 
 use crate::domain::common::Severity;
 
-/// Representa el puntaje numérico preciso de un riesgo de fraude (1.0 - 10.0).
-/// Internamente usa un factor de escala de 100 (2 decimales suelen bastar para scoring).
+/// Risk score in the closed range `1.0..=10.0`.
+///
+/// The type stores values as fixed-point hundredths to keep deterministic
+/// arithmetic and stable serialization.
+///
+/// # Invariant
+///
+/// - `1.0 <= score <= 10.0`
+///
+/// # Serde
+///
+/// `Score` serializes as `f32` and deserializes through validation.
+///
+/// # Examples
+///
+/// ```
+/// use rve_core::domain::common::Score;
+///
+/// let score = Score::new(6.5).unwrap();
+/// assert_eq!(score.as_f32(), 6.5);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct Score(u16); // u16 es suficiente para valores hasta 655.35
+#[serde(try_from = "f32", into = "f32")]
+pub struct Score(u16);
+
+/// Errors returned when constructing or converting a [`Score`].
+#[derive(Debug, Error, Clone, PartialEq)]
+pub enum ScoreError {
+  /// Input is NaN or infinite.
+  #[error("score must be finite")]
+  NonFinite,
+  /// Input is outside `1.0..=10.0`.
+  #[error("score out of range: {value} (expected 1.0..=10.0)")]
+  OutOfRange { value: f32 },
+}
 
 impl Score {
-  const SCALE: u16 = 100;
+  const SCALE: f32 = 100.0;
+  const MIN: f32 = 1.0;
+  const MAX: f32 = 10.0;
 
-  pub fn new(val: f32) -> Option<Self> {
-    if !(1.0..=10.0).contains(&val) {
-      return None;
+  /// Creates a validated score.
+  ///
+  /// # Errors
+  ///
+  /// - [`ScoreError::NonFinite`] for `NaN` and infinities.
+  /// - [`ScoreError::OutOfRange`] when outside `1.0..=10.0`.
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// use rve_core::domain::common::{Score, ScoreError};
+  ///
+  /// assert_eq!(Score::new(7.25).unwrap().as_f32(), 7.25);
+  /// assert!(matches!(Score::new(0.9), Err(ScoreError::OutOfRange { .. })));
+  /// ```
+  pub fn new(value: f32) -> Result<Self, ScoreError> {
+    if !value.is_finite() {
+      return Err(ScoreError::NonFinite);
     }
-    let scaled = (val * Self::SCALE as f32).round() as u16;
-    Some(Self(scaled))
+    if !(Self::MIN..=Self::MAX).contains(&value) {
+      return Err(ScoreError::OutOfRange { value });
+    }
+
+    let scaled = (value * Self::SCALE).round() as u16;
+    Ok(Self(scaled))
   }
 
-  pub fn as_f32(&self) -> f32 {
-    self.0 as f32 / Self::SCALE as f32
+  /// Returns this score as a floating-point number.
+  #[must_use]
+  pub fn as_f32(self) -> f32 {
+    self.0 as f32 / Self::SCALE
   }
 }
 
-/// De Severity a Score: Usamos el valor representativo (el techo del rango).
+impl TryFrom<f32> for Score {
+  type Error = ScoreError;
+
+  fn try_from(value: f32) -> Result<Self, Self::Error> {
+    Self::new(value)
+  }
+}
+
+impl From<Score> for f32 {
+  fn from(value: Score) -> Self {
+    value.as_f32()
+  }
+}
+
 impl From<Severity> for Score {
   fn from(severity: Severity) -> Self {
-    // Safe unwrap porque Severity::value() siempre devuelve 1-10
-    Self::new(severity.value() as f32).unwrap()
+    Self::new(severity.value() as f32).expect("severity representative value is always valid")
   }
 }
 
-/// De Score a Severity: Mapeo por rangos.
 impl From<Score> for Severity {
+  /// Maps a score to severity using integer truncation of fixed-point storage.
+  ///
+  /// This conversion intentionally avoids floating-point arithmetic and works
+  /// directly on the scaled integer representation.
   fn from(score: Score) -> Self {
-    let val = (score.0 / Score::SCALE) as u8;
-    // Reutilizamos tu lógica de from_u8 o la expandimos aquí
-    Self::from_u8(val).unwrap_or(Severity::None)
+    let integer = (score.0 / 100) as u8;
+    Severity::new(integer).expect("score invariant guarantees integer bucket in 1..=10")
   }
 }
 
 impl fmt::Display for Score {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    let severity: Severity = (*self).into();
-    write!(f, "{:.2} [{:?}]", self.as_f32(), severity)
+    write!(f, "{:.2}", self.as_f32())
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use crate::domain::common::Severity;
+
+  use super::{Score, ScoreError};
+
+  #[test]
+  fn rejects_non_finite_values() {
+    assert!(matches!(Score::new(f32::NAN), Err(ScoreError::NonFinite)));
+    assert!(matches!(Score::new(f32::INFINITY), Err(ScoreError::NonFinite)));
+  }
+
+  #[test]
+  fn rejects_out_of_range_values() {
+    assert!(matches!(Score::new(0.99), Err(ScoreError::OutOfRange { .. })));
+    assert!(matches!(Score::new(10.01), Err(ScoreError::OutOfRange { .. })));
+  }
+
+  #[test]
+  fn serializes_as_decimal_number() {
+    let score = Score::new(6.5).unwrap();
+    let json = serde_json::to_string(&score).unwrap();
+    assert_eq!(json, "6.5");
+  }
+
+  #[test]
+  fn deserializes_with_validation() {
+    let score: Score = serde_json::from_str("6.5").unwrap();
+    assert_eq!(score.as_f32(), 6.5);
+
+    let invalid = serde_json::from_str::<Score>("0");
+    assert!(invalid.is_err());
+  }
+
+  #[test]
+  fn maps_to_severity_without_float_rounding_risk() {
+    assert_eq!(Severity::from(Score::new(1.0).unwrap()), Severity::None);
+    assert_eq!(Severity::from(Score::new(1.99).unwrap()), Severity::None);
+    assert_eq!(Severity::from(Score::new(2.0).unwrap()), Severity::Low);
+    assert_eq!(Severity::from(Score::new(9.99).unwrap()), Severity::VeryHigh);
+    assert_eq!(Severity::from(Score::new(10.0).unwrap()), Severity::Catastrophic);
   }
 }

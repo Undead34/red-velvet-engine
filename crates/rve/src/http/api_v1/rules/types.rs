@@ -231,9 +231,8 @@ pub struct RuleEnforcementInput {
 
 impl RuleEnforcementInput {
   fn into_domain(self) -> ApiResult<RuleEnforcement> {
-    let score_impact = Score::new(self.score_impact).ok_or_else(|| {
-      ApiError::validation("enforcement.score_impact", "must be between 1.0 and 10.0")
-    })?;
+    let score_impact = Score::new(self.score_impact)
+      .map_err(|_| ApiError::validation("enforcement.score_impact", "must be between 1.0 and 10.0"))?;
     let mut functions = Vec::with_capacity(self.functions.len());
     for (index, function) in self.functions.into_iter().enumerate() {
       let field = format!("enforcement.functions[{index}]");

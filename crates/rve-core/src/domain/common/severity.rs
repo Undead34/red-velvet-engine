@@ -1,51 +1,70 @@
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
+use thiserror::Error;
 
-/// Nivel de severidad de un evento de fraude bancario.
+/// Operational severity level for fraud outcomes.
 ///
-/// Los niveles están ordenados de mayor a menor impacto.
-/// Cada variante cubre un rango de valores numéricos (1-10),
-/// siendo 10 el más crítico.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+/// Levels are ordered from highest to lowest impact and mapped to the
+/// numeric range `1..=10`.
+///
+/// Numeric buckets:
+/// - `10` -> [`Severity::Catastrophic`]
+/// - `8..=9` -> [`Severity::VeryHigh`]
+/// - `6..=7` -> [`Severity::High`]
+/// - `4..=5` -> [`Severity::Moderate`]
+/// - `2..=3` -> [`Severity::Low`]
+/// - `1` -> [`Severity::None`]
+///
+/// Level guide:
+/// - `catastrophic`: critical incident, potential systemic/regulatory impact.
+/// - `very_high`: major fraud exposure requiring immediate containment.
+/// - `high`: significant impact with strong operational urgency.
+/// - `moderate`: controlled impact, requires analyst review.
+/// - `low`: minor issue, usually handled by routine controls.
+/// - `none`: informational/no meaningful impact.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Severity {
-  /// 10 – Catastrófico
-  /// Quiebra de la entidad, daño reputacional irreversible,
-  /// multas regulatorias extremas, riesgo sistémico.
+  /// Critical impact and potential systemic risk.
   Catastrophic,
-
-  /// 9 – 8 Muy alto
-  /// Pérdida financiera mayor, fuga masiva de clientes,
-  /// intervención del regulador, daño reputacional severo.
+  /// Major impact requiring urgent mitigation.
   VeryHigh,
-
-  /// 7 – 6 Alto
-  /// Pérdida financiera significativa, quejas formales de clientes VIP,
-  /// procesos manuales de contingencia, posible multa.
+  /// Significant impact requiring rapid response.
   High,
-
-  /// 5 – 4 Moderado
-  /// Pérdida financiera controlable, cliente molesto,
-  /// requiere investigación manual, sin multa regulatoria.
+  /// Manageable impact that still requires investigation.
   Moderate,
-
-  /// 3 – 2 Bajo
-  /// Defecto menor, pérdida irrelevante, cliente apenas lo nota.
-  /// Se resuelve con acciones automáticas o en batch.
+  /// Minor impact with limited operational risk.
   Low,
-
-  /// 1 – Nulo o mínimo
-  /// Impacto imperceptible para el cliente y el negocio.
-  /// Solo registro informativo.
+  /// Informational or negligible impact.
   None,
 }
 
+/// Errors returned when converting numeric values into [`Severity`].
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
+pub enum SeverityError {
+  /// Provided value is outside the accepted `1..=10` domain.
+  #[error("severity value out of range: {value} (expected 1..=10)")]
+  OutOfRange { value: u8 },
+}
+
 impl Severity {
-  /// Retorna el valor numérico **representativo** de la severidad.
-  /// Para rangos, se usa el límite superior (el más crítico del rango).
+  /// Returns the representative numeric value for this severity.
+  ///
+  /// For bucketed levels, this method returns the upper bound of the bucket.
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// use rve_core::domain::common::Severity;
+  ///
+  /// assert_eq!(Severity::High.value(), 7);
+  /// assert_eq!(Severity::VeryHigh.value(), 9);
+  /// ```
+  #[must_use]
   pub const fn value(self) -> u8 {
     match self {
       Self::Catastrophic => 10,
-      Self::VeryHigh => 9, // podría ser 8 también, 9 es el tope
+      Self::VeryHigh => 9,
       Self::High => 7,
       Self::Moderate => 5,
       Self::Low => 3,
@@ -53,38 +72,166 @@ impl Severity {
     }
   }
 
-  /// Retorna el nivel de severidad a partir de un valor numérico (1-10).
-  /// Útil para mapear desde fuentes externas (APIs, bases de datos).
-  pub fn from_u8(value: u8) -> Option<Self> {
+  /// Converts a numeric score (`1..=10`) into a severity bucket.
+  ///
+  /// # Errors
+  ///
+  /// Returns [`SeverityError::OutOfRange`] when `value` is not in `1..=10`.
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// use rve_core::domain::common::{Severity, SeverityError};
+  ///
+  /// assert_eq!(Severity::new(10).unwrap(), Severity::Catastrophic);
+  /// assert!(matches!(Severity::new(0), Err(SeverityError::OutOfRange { value: 0 })));
+  /// ```
+  pub const fn new(value: u8) -> Result<Self, SeverityError> {
     match value {
-      10 => Some(Self::Catastrophic),
-      9 | 8 => Some(Self::VeryHigh),
-      7 | 6 => Some(Self::High),
-      5 | 4 => Some(Self::Moderate),
-      3 | 2 => Some(Self::Low),
-      1 => Some(Self::None),
-      _ => None, // fuera de rango
+      10 => Ok(Self::Catastrophic),
+      9 | 8 => Ok(Self::VeryHigh),
+      7 | 6 => Ok(Self::High),
+      5 | 4 => Ok(Self::Moderate),
+      3 | 2 => Ok(Self::Low),
+      1 => Ok(Self::None),
+      _ => Err(SeverityError::OutOfRange { value }),
     }
   }
 
-  /// Descripción legible del impacto.
-  pub fn description(self) -> &'static str {
+  /// Converts a numeric score (`1..=10`) into a severity bucket.
+  ///
+  /// This is a convenience wrapper over [`Severity::new`] for call sites that
+  /// prefer `Option`.
+  #[must_use]
+  pub const fn from_u8(value: u8) -> Option<Self> {
+    match Self::new(value) {
+      Ok(severity) => Some(severity),
+      Err(_) => None,
+    }
+  }
+
+  /// Returns a short human-readable description of the impact level.
+  #[must_use]
+  pub const fn description(self) -> &'static str {
     match self {
-      Self::Catastrophic => "Quiebra / Daño irreparable / Ilegal",
-      Self::VeryHigh => "Pérdida mayor / Fuga clientes / Regulador",
-      Self::High => "Pérdida significativa / Clientes VIP afectados",
-      Self::Moderate => "Pérdida controlable / Cliente molesto",
-      Self::Low => "Defecto menor / Casi imperceptible",
-      Self::None => "Sin impacto relevante",
+      Self::Catastrophic => "Systemic or critical business impact",
+      Self::VeryHigh => "Major financial or operational impact",
+      Self::High => "Significant and time-sensitive impact",
+      Self::Moderate => "Controlled impact requiring investigation",
+      Self::Low => "Minor impact with low urgency",
+      Self::None => "No meaningful impact",
     }
   }
 }
 
-/// Conversión infalible desde un entero (paniquea si está fuera de rango).
 impl TryFrom<u8> for Severity {
-  type Error = &'static str;
+  type Error = SeverityError;
 
   fn try_from(value: u8) -> Result<Self, Self::Error> {
-    Self::from_u8(value).ok_or("Valor de severidad fuera de rango (1-10)")
+    Self::new(value)
+  }
+}
+
+impl PartialOrd for Severity {
+  fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    Some(self.cmp(other))
+  }
+}
+
+impl Ord for Severity {
+  fn cmp(&self, other: &Self) -> Ordering {
+    self.value().cmp(&other.value())
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::{Severity, SeverityError};
+
+  #[test]
+  fn value_uses_upper_bound_for_bucketed_levels() {
+    assert_eq!(Severity::Catastrophic.value(), 10);
+    assert_eq!(Severity::VeryHigh.value(), 9);
+    assert_eq!(Severity::High.value(), 7);
+    assert_eq!(Severity::Moderate.value(), 5);
+    assert_eq!(Severity::Low.value(), 3);
+    assert_eq!(Severity::None.value(), 1);
+  }
+
+  #[test]
+  fn new_maps_all_buckets() {
+    assert_eq!(Severity::new(10).unwrap(), Severity::Catastrophic);
+    assert_eq!(Severity::new(9).unwrap(), Severity::VeryHigh);
+    assert_eq!(Severity::new(8).unwrap(), Severity::VeryHigh);
+    assert_eq!(Severity::new(7).unwrap(), Severity::High);
+    assert_eq!(Severity::new(6).unwrap(), Severity::High);
+    assert_eq!(Severity::new(5).unwrap(), Severity::Moderate);
+    assert_eq!(Severity::new(4).unwrap(), Severity::Moderate);
+    assert_eq!(Severity::new(3).unwrap(), Severity::Low);
+    assert_eq!(Severity::new(2).unwrap(), Severity::Low);
+    assert_eq!(Severity::new(1).unwrap(), Severity::None);
+  }
+
+  #[test]
+  fn new_rejects_out_of_range_values() {
+    assert!(matches!(Severity::new(0), Err(SeverityError::OutOfRange { value: 0 })));
+    assert!(matches!(Severity::new(11), Err(SeverityError::OutOfRange { value: 11 })));
+  }
+
+  #[test]
+  fn from_u8_remains_convenience_option_api() {
+    assert_eq!(Severity::from_u8(10), Some(Severity::Catastrophic));
+    assert_eq!(Severity::from_u8(0), None);
+  }
+
+  #[test]
+  fn description_is_stable_and_non_empty() {
+    for severity in [
+      Severity::Catastrophic,
+      Severity::VeryHigh,
+      Severity::High,
+      Severity::Moderate,
+      Severity::Low,
+      Severity::None,
+    ] {
+      assert!(!severity.description().is_empty());
+    }
+  }
+
+  #[test]
+  fn derived_order_follows_impact_descending() {
+    assert!(Severity::Catastrophic > Severity::VeryHigh);
+    assert!(Severity::VeryHigh > Severity::High);
+    assert!(Severity::High > Severity::Moderate);
+    assert!(Severity::Moderate > Severity::Low);
+    assert!(Severity::Low > Severity::None);
+  }
+
+  #[test]
+  fn derived_order_and_numeric_value_are_aligned() {
+    let ordered = [
+      Severity::None,
+      Severity::Low,
+      Severity::Moderate,
+      Severity::High,
+      Severity::VeryHigh,
+      Severity::Catastrophic,
+    ];
+
+    for pair in ordered.windows(2) {
+      let left = pair[0];
+      let right = pair[1];
+
+      assert!(left < right);
+      assert!(left.value() < right.value());
+    }
+  }
+
+  #[test]
+  fn max_returns_worst_severity() {
+    let severities = vec![Severity::Low, Severity::Catastrophic, Severity::Moderate];
+    let worst = severities.into_iter().max();
+
+    assert_eq!(worst, Some(Severity::Catastrophic));
   }
 }
