@@ -1,3 +1,4 @@
+use crate::domain::common::TimestampMsError;
 use crate::domain::event::{EventError, EventFeaturesError, EventGeoError, EventPartyError};
 use crate::domain::rule::{RulePolicyError, RuleRolloutError, RuleScheduleError, RuleStateError};
 use thiserror::Error;
@@ -68,8 +69,8 @@ pub enum DomainError {
   #[error("invalid money amount: {0}")]
   InvalidMoneyAmount(String),
 
-  #[error("invalid timestamp (ms): {0}")]
-  InvalidTimestampMs(u64),
+  #[error(transparent)]
+  TimestampMs(#[from] TimestampMsError),
 
   #[error("invalid user agent: {0}")]
   InvalidUserAgent(String),

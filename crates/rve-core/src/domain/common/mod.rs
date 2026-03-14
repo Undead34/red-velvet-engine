@@ -17,4 +17,4 @@ pub use identifiers::{AccountId, BankRef, DeviceId, EventId, RuleId, SessionId};
 pub use money::{Money, MoneyMinor};
 pub use score::Score;
 pub use severity::Severity;
-pub use timestamp_ms::TimestampMs;
+pub use timestamp_ms::{TimestampMs, TimestampMsError};
