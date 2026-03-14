@@ -29,6 +29,7 @@
 pub mod common;
 pub mod error;
 pub mod event;
+pub mod monetary;
 pub mod rule;
 
 pub use error::DomainError;

@@ -345,7 +345,7 @@ dependencies = [
  "datalogic-rs",
  "getrandom",
  "log",
- "quick-xml",
+ "quick-xml 0.37.5",
  "serde",
  "serde_json",
  "thiserror",
@@ -390,7 +390,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -723,6 +723,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
+name = "iso4217-catalog"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quick-xml 0.38.4",
+ "quote",
+ "serde",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -936,6 +946,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "quick-xml"
+version = "0.38.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b66c2058c55a409d601666cffe35f04333cf1013010882cec174a7467cd4e21c"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1030,7 +1049,6 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
- "tower",
  "tower-http",
  "tracing",
  "tracing-subscriber",
@@ -1045,6 +1063,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "chrono-tz",
+ "iso4217-catalog",
  "semver",
  "serde",
  "serde_json",
@@ -1056,10 +1075,14 @@ dependencies = [
 name = "rve-test-suite"
 version = "0.1.0"
 dependencies = [
+ "axum",
  "chrono",
+ "rve",
  "rve-core",
  "semver",
  "serde_json",
+ "tokio",
+ "tower",
 ]
 
 [[package]]

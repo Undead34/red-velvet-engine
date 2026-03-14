@@ -40,38 +40,6 @@ impl From<CountryCode> for String {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(try_from = "String", into = "String")]
-pub struct Currency(String);
-
-impl Currency {
-  pub fn new(value: impl Into<String>) -> Result<Self, DomainError> {
-    let value = value.into();
-    if value.len() == 3 && value.chars().all(|c| c.is_ascii_uppercase()) {
-      Ok(Self(value))
-    } else {
-      Err(DomainError::InvalidCurrencyCode(value))
-    }
-  }
-
-  pub fn as_str(&self) -> &str {
-    &self.0
-  }
-}
-
-impl TryFrom<String> for Currency {
-  type Error = DomainError;
-  fn try_from(value: String) -> Result<Self, Self::Error> {
-    Self::new(value)
-  }
-}
-
-impl From<Currency> for String {
-  fn from(value: Currency) -> Self {
-    value.0
-  }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[serde(try_from = "String", into = "String")]
 pub struct KycLevel(String);
 
 impl KycLevel {
