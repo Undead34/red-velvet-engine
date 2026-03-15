@@ -7,6 +7,10 @@ use crate::domain::common::Money;
 
 use super::{Parties, error::EventPartyError};
 
+mod value_transfer;
+
+pub use value_transfer::ValueTransfer;
+
 /// Event business payload.
 ///
 /// The model is represented as an enum to support multiple operation types
@@ -18,18 +22,7 @@ use super::{Parties, error::EventPartyError};
 #[serde(untagged)]
 pub enum Payload {
   /// Movement of monetary value between two parties.
-  ValueTransfer(ValueTransferPayload),
-}
-
-/// Value-transfer payload used in rule evaluation.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ValueTransferPayload {
-  /// Transaction amount and currency.
-  pub money: Money,
-  /// Originator/beneficiary data.
-  pub parties: Parties,
-  /// Free-form extensions passed to rules.
-  pub extensions: BTreeMap<String, Value>,
+  ValueTransfer(ValueTransfer),
 }
 
 impl Payload {
@@ -40,19 +33,19 @@ impl Payload {
     parties: Parties,
     extensions: BTreeMap<String, Value>,
   ) -> Self {
-    Self::ValueTransfer(ValueTransferPayload { money, parties, extensions })
+    Self::ValueTransfer(ValueTransfer::new(money, parties, extensions))
   }
 
   /// Returns the value-transfer payload when available.
   #[must_use]
-  pub fn as_value_transfer(&self) -> Option<&ValueTransferPayload> {
+  pub fn as_value_transfer(&self) -> Option<&ValueTransfer> {
     match self {
       Self::ValueTransfer(payload) => Some(payload),
     }
   }
 
   /// Returns mutable access to the value-transfer payload when available.
-  pub fn as_value_transfer_mut(&mut self) -> Option<&mut ValueTransferPayload> {
+  pub fn as_value_transfer_mut(&mut self) -> Option<&mut ValueTransfer> {
     match self {
       Self::ValueTransfer(payload) => Some(payload),
     }

@@ -26,5 +26,5 @@ pub use features::{Features, FinancialFeatures};
 pub use header::Header;
 pub use parties::Parties;
 pub use party::Party;
-pub use payload::{Payload, ValueTransferPayload};
+pub use payload::{Payload, ValueTransfer};
 pub use signals::Signals;
