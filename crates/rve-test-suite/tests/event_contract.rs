@@ -71,10 +71,10 @@ fn valid_event() -> Event {
 
   let signals = Signals { flags: BTreeMap::from([(Signal::Vpn, Flag::No)]) };
 
-  let payload = Payload {
-    money: rve_core::domain::common::Money::from_major_str("100.5", Currency::new("USD").unwrap())
+  let payload = Payload::value_transfer(
+    rve_core::domain::common::Money::from_major_str("100.5", Currency::new("USD").unwrap())
       .unwrap(),
-    parties: Parties {
+    Parties {
       originator: Party::new(
         rve_core::domain::common::EntityType::Individual,
         AccountId::new("acct_001").unwrap(),
@@ -96,8 +96,8 @@ fn valid_event() -> Event {
       )
       .unwrap(),
     },
-    extensions: BTreeMap::new(),
-  };
+    BTreeMap::new(),
+  );
 
   Event::new(header, context, features, signals, payload).unwrap()
 }
@@ -105,7 +105,8 @@ fn valid_event() -> Event {
 #[test]
 fn creates_valid_event() {
   let event = valid_event();
-  assert_eq!(event.payload.money.ccy().as_str(), "USD");
+  let transfer = event.payload.as_value_transfer().expect("value transfer payload");
+  assert_eq!(transfer.money.ccy().as_str(), "USD");
 }
 
 #[test]
@@ -134,7 +135,13 @@ fn rejects_invalid_feature_chronology() {
 #[test]
 fn rejects_invalid_sanctions_score() {
   let mut event = valid_event();
-  event.payload.parties.originator.sanctions_score = Some(1.5);
+  event
+    .payload
+    .as_value_transfer_mut()
+    .expect("value transfer payload")
+    .parties
+    .originator
+    .sanctions_score = Some(1.5);
   let result = event.validate();
   assert!(matches!(
     result,

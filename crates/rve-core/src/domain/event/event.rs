@@ -47,7 +47,7 @@ impl Event {
   /// or feature chronology.
   pub fn validate(&self) -> Result<(), DomainError> {
     self.context.geo.validate().map_err(EventError::Geo)?;
-    self.payload.parties.validate().map_err(EventError::Party)?;
+    self.payload.validate().map_err(EventError::Party)?;
     self.features.validate().map_err(EventError::Features)?;
     Ok(())
   }

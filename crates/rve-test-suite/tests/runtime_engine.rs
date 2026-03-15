@@ -83,13 +83,10 @@ fn valid_event() -> Event {
       },
     },
     Signals { flags: BTreeMap::from([]) },
-    Payload {
-      money: rve_core::domain::common::Money::from_major_str(
-        "100.0",
-        Currency::new("USD").unwrap(),
-      )
-      .unwrap(),
-      parties: Parties {
+    Payload::value_transfer(
+      rve_core::domain::common::Money::from_major_str("100.0", Currency::new("USD").unwrap())
+        .unwrap(),
+      Parties {
         originator: Party::new(
           rve_core::domain::common::EntityType::Individual,
           AccountId::new("acct_001").unwrap(),
@@ -111,8 +108,8 @@ fn valid_event() -> Event {
         )
         .unwrap(),
       },
-      extensions: BTreeMap::new(),
-    },
+      BTreeMap::new(),
+    ),
   )
   .unwrap()
 }
