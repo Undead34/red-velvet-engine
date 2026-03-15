@@ -1,8 +1,8 @@
 use axum::{
+  Router,
   body::{Body, to_bytes},
   http::{Request, StatusCode, header},
   response::Response,
-  Router,
 };
 use serde_json::{Value, json};
 use tower::ServiceExt;

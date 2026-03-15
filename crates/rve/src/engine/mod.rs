@@ -16,15 +16,11 @@ impl RVEngine {
   }
 
   pub fn publish_rules(&self, _rules: Vec<Rule>) -> Result<RulesetSnapshot, RuntimeEngineError> {
-    Err(RuntimeEngineError::NotImplemented {
-      message: RUNTIME_NOT_IMPLEMENTED_MESSAGE.to_owned(),
-    })
+    Err(RuntimeEngineError::NotImplemented { message: RUNTIME_NOT_IMPLEMENTED_MESSAGE.to_owned() })
   }
 
   pub fn evaluate(&self, _event: &Event) -> Result<RuntimeEvaluation, RuntimeEngineError> {
-    Err(RuntimeEngineError::NotImplemented {
-      message: RUNTIME_NOT_IMPLEMENTED_MESSAGE.to_owned(),
-    })
+    Err(RuntimeEngineError::NotImplemented { message: RUNTIME_NOT_IMPLEMENTED_MESSAGE.to_owned() })
   }
 }
 
