@@ -5,8 +5,8 @@ use tracing::{error, info, info_span};
 
 use rve::http::build_router;
 use rve::http::state::AppState;
+use rve::{about, cli::AboutCommand, cli::App, cli::Command, error::AppError};
 use rve::{banner, logger};
-use rve::{cli::App, error::AppError};
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -21,6 +21,15 @@ async fn main() -> ExitCode {
 
 async fn run() -> Result<(), AppError> {
   let app = App::new();
+
+  if let Some(Command::About { command }) = app.command {
+    match command {
+      Some(AboutCommand::Licenses) => about::show_licenses(app.quiet),
+      None => about::show_project_about(app.quiet),
+    }
+
+    return Ok(());
+  }
 
   let _bye = banner::show_banner(app.quiet);
   logger::setup_logging(app.verbose, app.quiet);

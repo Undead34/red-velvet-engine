@@ -102,6 +102,23 @@ cargo test -p rve-core
 cargo test -p rve
 ```
 
+## 🧾 About and third-party licenses
+
+```bash
+# Project metadata
+cargo run -p rve -- about
+
+# Third-party licenses report used by the CLI
+cargo run -p rve -- about licenses
+```
+
+To regenerate the third-party report with full license texts using `cargo-about`:
+
+```bash
+cargo install --locked cargo-about
+cargo about generate --workspace about.hbs > THIRD_PARTY_LICENSES.md
+```
+
 ## 📄 License
 
 Red Velvet Engine is distributed under **Business Source License 1.1**.

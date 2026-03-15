@@ -1,3 +1,4 @@
+pub mod about;
 pub mod banner;
 pub mod cli;
 pub mod engine;

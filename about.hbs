@@ -1,0 +1,33 @@
+THIRD-PARTY LICENSE ACKNOWLEDGEMENTS
+
+Gracias a todas las personas y equipos que mantienen el ecosistema open source.
+Este proyecto existe gracias a su trabajo y dedicacion.
+
+Cobertura: este documento se genera para todo el workspace.
+Componentes del proyecto: rve, rve-core, iso4217-catalog, rve-test-suite.
+
+Generado automaticamente con cargo-about.
+
+-------------------------------------------------------------------------------
+RESUMEN POR LICENCIA
+-------------------------------------------------------------------------------
+{{#each overview}}
+- {{{name}}} ({{count}})
+{{/each}}
+
+{{#each licenses}}
+-------------------------------------------------------------------------------
+AGRADECIMIENTO
+-------------------------------------------------------------------------------
+Gracias a las y los mantenedores bajo la licencia: {{{name}}}
+
+Crates incluidos en este proyecto bajo esta licencia:
+{{#each used_by}}
+- {{crate.name}} {{crate.version}}
+{{/each}}
+
+Texto de la licencia:
+{{{text}}}
+
+-------------------------------------------------------------------------------
+{{/each}}
