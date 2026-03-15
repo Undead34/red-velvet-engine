@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Red Velvet Engine - Black Cherry</title>
+    <style>
+      :root {
+        --ink: #1b1d22;
+        --muted: #5a6272;
+        --accent: #9b1d30;
+        --accent-2: #ef4f5f;
+        --card: rgba(255, 255, 255, 0.86);
+        --line: rgba(27, 29, 34, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+        background:
+          radial-gradient(1400px 500px at 90% -10%, rgba(239, 79, 95, 0.24), transparent 70%),
+          radial-gradient(900px 420px at -10% 0%, rgba(155, 29, 48, 0.22), transparent 65%),
+          linear-gradient(160deg, #fff8f7 0%, #f8fafc 52%, #fff 100%);
+      }
+
+      .wrap {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 34px 22px 56px;
+      }
+
+      .hero {
+        border: 1px solid var(--line);
+        background: linear-gradient(130deg, var(--card), rgba(255, 255, 255, 0.96));
+        border-radius: 20px;
+        box-shadow: 0 20px 55px rgba(33, 40, 56, 0.14);
+        padding: 34px;
+      }
+
+      .kicker {
+        margin: 0 0 10px;
+        color: var(--accent);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 0.79rem;
+        font-weight: 700;
+      }
+
+      h1 {
+        margin: 0;
+        line-height: 1.1;
+        font-size: clamp(2rem, 4vw, 3.2rem);
+      }
+
+      .hero p {
+        margin: 14px 0 0;
+        max-width: 74ch;
+        line-height: 1.65;
+        color: #2a3240;
+      }
+
+      .meta {
+        margin-top: 18px;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .grid {
+        margin-top: 18px;
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 14px;
+      }
+
+      .card {
+        grid-column: span 6;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 18px;
+        background: rgba(255, 255, 255, 0.82);
+      }
+
+      .card h2 {
+        margin: 0 0 9px;
+        font-size: 1.08rem;
+      }
+
+      .card p,
+      .card li {
+        color: #384254;
+        line-height: 1.55;
+      }
+
+      ul {
+        margin: 8px 0 0;
+        padding-left: 20px;
+      }
+
+      .links a {
+        display: inline-block;
+        margin: 0 12px 12px 0;
+        text-decoration: none;
+        color: #fff;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        border-radius: 999px;
+        padding: 10px 14px;
+        font-weight: 600;
+      }
+
+      .links a.secondary {
+        color: var(--accent);
+        background: #fff;
+        border: 1px solid rgba(155, 29, 48, 0.3);
+      }
+
+      .footer {
+        margin-top: 18px;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      @media (max-width: 860px) {
+        .hero {
+          padding: 24px;
+        }
+        .card {
+          grid-column: span 12;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="hero">
+        <p class="kicker">Fraud Decision Platform</p>
+        <h1>Red Velvet Engine - Black Cherry</h1>
+        <p>
+          Real-time fraud decisioning with clean domain boundaries.
+          Built for Risk, Fraud Ops, and Trust teams that need speed, control, and auditability.
+        </p>
+        <p class="meta">
+          Policy-driven rules, event evaluation contracts, and auditable outcomes.
+          License: BUSL-1.1.
+        </p>
+
+        <div class="grid">
+          <article class="card">
+            <h2>Core capabilities</h2>
+            <ul>
+              <li>Rule CRUD with lifecycle and state controls.</li>
+              <li>Strict validation and stable API contracts.</li>
+              <li>Metadata contract for fields and JSONLogic roots.</li>
+              <li>OpenAPI docs for integration teams.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h2>Architecture</h2>
+            <p>
+              <strong>rve-core</strong> keeps the fraud domain and invariants,
+              while <strong>rve</strong> provides HTTP adapters and runtime wiring.
+              This keeps business logic independent from infrastructure choices.
+            </p>
+          </article>
+          <article class="card" style="grid-column: span 12;">
+            <h2>Start here</h2>
+            <div class="links">
+              <a href="/api-docs">API docs</a>
+              <a href="/api-docs/openapi.json" class="secondary">OpenAPI JSON</a>
+              <a href="/health" class="secondary">Health</a>
+              <a href="/api/v1/rules" class="secondary">Rules endpoint</a>
+              <a href="/api/v1/metadata/contract" class="secondary">Metadata contract</a>
+            </div>
+            <p class="footer">
+              Tip: the Overview page inside API docs is generated from OpenAPI info description.
+            </p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

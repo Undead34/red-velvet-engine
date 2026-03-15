@@ -3,10 +3,22 @@ use std::collections::BTreeMap;
 use axum::Json;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use utoipa::{OpenApi, ToSchema};
+use utoipa::{Modify, OpenApi, ToSchema};
+
+const OVERVIEW_MD: &str = include_str!("pages/overview.md");
+
+struct ApiInfoModifier;
+
+impl Modify for ApiInfoModifier {
+  fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+    openapi.info.title = "Red Velvet Engine API".to_owned();
+    openapi.info.description = Some(OVERVIEW_MD.to_owned());
+  }
+}
 
 #[derive(OpenApi)]
 #[openapi(
+  modifiers(&ApiInfoModifier),
   paths(
     crate::http::health::handler,
     crate::http::api_v1::rules::handlers::list_rules,
