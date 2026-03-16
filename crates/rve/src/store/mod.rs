@@ -1,3 +1,3 @@
 pub mod rules;
 
-pub use rules::InMemoryRuleRepository;
+pub use rules::{InMemoryRuleRepository, RedisRuleRepository, seed_rules};

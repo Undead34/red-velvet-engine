@@ -20,6 +20,8 @@ async fn main() -> ExitCode {
 }
 
 async fn run() -> Result<(), AppError> {
+  let _ = dotenvy::dotenv();
+
   let app = App::new();
 
   if let Some(Command::About { command }) = app.command {

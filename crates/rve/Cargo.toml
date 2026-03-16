@@ -14,6 +14,7 @@ serde_json = { workspace = true }
 tracing-subscriber = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+dotenvy = "0.15.7"
 
 dataflow-rs = "2.1"
 datalogic-rs = "4"
