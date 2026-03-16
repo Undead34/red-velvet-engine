@@ -26,11 +26,39 @@ ignore = false
 [iso4217-catalog]
 accepted = ["BUSL-1.1"]
 
+[iso4217-catalog.clarify]
+license = "BUSL-1.1"
+
+[[iso4217-catalog.clarify.files]]
+path = "../../LICENSE"
+checksum = "23e71c617e94d5ffe609e9ec8cefc9d887b974dbdcfbff17f91698f9bc8c5c2e"
+
 [rve]
 accepted = ["BUSL-1.1"]
+
+[rve.clarify]
+license = "BUSL-1.1"
+
+[[rve.clarify.files]]
+path = "../../LICENSE"
+checksum = "23e71c617e94d5ffe609e9ec8cefc9d887b974dbdcfbff17f91698f9bc8c5c2e"
 
 [rve-core]
 accepted = ["BUSL-1.1"]
 
+[rve-core.clarify]
+license = "BUSL-1.1"
+
+[[rve-core.clarify.files]]
+path = "../../LICENSE"
+checksum = "23e71c617e94d5ffe609e9ec8cefc9d887b974dbdcfbff17f91698f9bc8c5c2e"
+
 [rve-test-suite]
 accepted = ["BUSL-1.1"]
+
+[rve-test-suite.clarify]
+license = "BUSL-1.1"
+
+[[rve-test-suite.clarify.files]]
+path = "../../LICENSE"
+checksum = "23e71c617e94d5ffe609e9ec8cefc9d887b974dbdcfbff17f91698f9bc8c5c2e"
