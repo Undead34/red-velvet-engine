@@ -40,7 +40,7 @@ pub async fn status(
   let repository_rules = match state.rule_repo.all().await {
     Ok(rules) => rules.len() as u32,
     Err(err) => {
-      error!(target: "BANNER", %err, operation = "status", "failed to read repository rules");
+      error!(%err, operation = "status", "failed to read repository rules");
       return Err((
         StatusCode::INTERNAL_SERVER_ERROR,
         Json(ErrorResponse {
@@ -53,7 +53,7 @@ pub async fn status(
   };
 
   let runtime_status = state.engine.status().map_err(|err| {
-    error!(target: "BANNER", %err, operation = "status", "failed to read runtime status");
+    error!(%err, operation = "status", "failed to read runtime status");
     (
       StatusCode::INTERNAL_SERVER_ERROR,
       Json(ErrorResponse {

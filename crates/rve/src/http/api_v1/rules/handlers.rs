@@ -75,7 +75,7 @@ pub async fn create_rule(
   let rule = payload.into_rule(None)?;
 
   for warning in collect_rule_warnings(&rule) {
-    warn!(target: "BANNER", path = %warning.path, message = %warning.message, "rule validation warning");
+    warn!(path = %warning.path, message = %warning.message, "rule validation warning");
   }
 
   let created = state.rule_repo.create(rule).await.map_err(map_repository_error)?;
@@ -170,7 +170,7 @@ pub async fn update_rule(
   let rule = payload.into_rule(Some(id))?;
 
   for warning in collect_rule_warnings(&rule) {
-    warn!(target: "BANNER", path = %warning.path, message = %warning.message, "rule validation warning");
+    warn!(path = %warning.path, message = %warning.message, "rule validation warning");
   }
 
   let updated = state.rule_repo.replace(rule).await.map_err(map_repository_error)?;
@@ -270,7 +270,7 @@ pub async fn patch_rule(
   validate_rule(&rule)?;
 
   for warning in collect_rule_warnings(&rule) {
-    warn!(target: "BANNER", path = %warning.path, message = %warning.message, "rule validation warning");
+    warn!(path = %warning.path, message = %warning.message, "rule validation warning");
   }
 
   let saved = state.rule_repo.replace(rule).await.map_err(map_repository_error)?;
