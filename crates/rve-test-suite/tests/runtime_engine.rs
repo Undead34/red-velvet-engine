@@ -10,23 +10,33 @@ use rve_core::{
       NetworkContext, Parties, Party, Payload, Signals,
     },
   },
-  ports::RuntimeEngineError,
+  ports::RuntimeEnginePort,
 };
 
-#[test]
-fn publish_rules_returns_not_implemented() {
+#[tokio::test]
+async fn publish_rules_returns_snapshot() {
   let engine = RVEngine::new();
-  let error = engine.publish_rules(vec![]).expect_err("placeholder runtime must fail");
+  let snapshot = RuntimeEnginePort::publish_rules(&engine, vec![])
+    .await
+    .expect("runtime publish should succeed");
 
-  assert!(matches!(error, RuntimeEngineError::NotImplemented { .. }));
+  assert_eq!(snapshot.loaded_rules, 0);
+  assert_eq!(snapshot.compile_stats.failed_rules, 0);
 }
 
-#[test]
-fn evaluate_returns_not_implemented() {
+#[tokio::test]
+async fn evaluate_returns_runtime_evaluation() {
   let engine = RVEngine::new();
-  let error = engine.evaluate(&valid_event()).expect_err("placeholder runtime must fail");
+  RuntimeEnginePort::publish_rules(&engine, vec![])
+    .await
+    .expect("runtime publish should succeed");
+  let evaluation = RuntimeEnginePort::evaluate(&engine, &valid_event())
+    .await
+    .expect("runtime evaluate should succeed");
 
-  assert!(matches!(error, RuntimeEngineError::NotImplemented { .. }));
+  assert_eq!(evaluation.hits.len(), 0);
+  assert_eq!(evaluation.score, 0.0);
+  assert_eq!(evaluation.evaluated_rules, 0);
 }
 
 fn valid_event() -> Event {

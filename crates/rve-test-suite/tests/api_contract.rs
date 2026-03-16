@@ -313,7 +313,7 @@ async fn rejects_disallowed_var_roots_in_rule_payload() {
 }
 
 #[tokio::test]
-async fn decisions_returns_placeholder_for_any_valid_json() {
+async fn decisions_returns_runtime_evaluation_for_valid_json() {
   let app = app().await;
 
   let response = app
@@ -328,13 +328,14 @@ async fn decisions_returns_placeholder_for_any_valid_json() {
     .await
     .expect("decision response");
 
-  assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
+  assert_eq!(response.status(), StatusCode::OK);
   let body = response_json(response).await;
-  assert_eq!(body["code"], "not_implemented");
+  assert!(body.get("score").is_some());
+  assert!(body.get("outcome").is_some());
 }
 
 #[tokio::test]
-async fn decisions_placeholder_does_not_validate_wrapper_shape() {
+async fn decisions_rejects_invalid_wrapper_shape() {
   let app = app().await;
   let payload = json!({ "event": valid_event_payload() });
 
@@ -350,13 +351,13 @@ async fn decisions_placeholder_does_not_validate_wrapper_shape() {
     .await
     .expect("decision response");
 
-  assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
+  assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
   let body = response_json(response).await;
-  assert_eq!(body["code"], "not_implemented");
+  assert_eq!(body["code"], "unprocessable_entity");
 }
 
 #[tokio::test]
-async fn engine_status_reports_placeholder_runtime() {
+async fn engine_status_reports_runtime_state() {
   let app = app().await;
   let list_response = app
     .clone()
@@ -385,14 +386,14 @@ async fn engine_status_reports_placeholder_runtime() {
 
   assert_eq!(response.status(), StatusCode::OK);
   let body = response_json(response).await;
-  assert_eq!(body["mode"], "placeholder");
+  assert_eq!(body["mode"], "dataflow-rs");
   assert_eq!(body["ready"], false);
   assert_eq!(body["loaded_rules"], 0);
   assert_eq!(body["repository_rules"], repository_rules);
 }
 
 #[tokio::test]
-async fn engine_reload_returns_placeholder_error() {
+async fn engine_reload_compiles_rules() {
   let app = app().await;
 
   let response = app
@@ -406,7 +407,8 @@ async fn engine_reload_returns_placeholder_error() {
     .await
     .expect("reload response");
 
-  assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
+  assert_eq!(response.status(), StatusCode::OK);
   let body = response_json(response).await;
-  assert_eq!(body["code"], "not_implemented");
+  assert!(body["version"].as_u64().is_some());
+  assert!(body["loaded_rules"].as_u64().is_some());
 }

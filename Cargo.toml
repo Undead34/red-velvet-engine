@@ -7,12 +7,12 @@ default-members = ["crates/rve"]
 authors = ["Gabriel Maizo <maizogabriel@gmail.com>"]
 edition = "2024"
 license = "BUSL-1.1"
+repository = "https://github.com/Undead34/red-velvet-engine"
 description = "Red Velvet Engine — Black Cherry 🍒 — stateless fraud decision engine"
 keywords = ["fraud", "risk", "security", "rules-engine"]
 
 [workspace.dependencies]
 async-trait = "0.1.83"
-datalogic-rs = "4.0.14"
 serde_json = "1.0.149"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
