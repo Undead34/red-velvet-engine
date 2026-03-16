@@ -1,7 +1,7 @@
 use axum::{
   Json,
   extract::State,
-  http::StatusCode,
+  http::{HeaderMap, HeaderValue, StatusCode, header},
 };
 use rve_core::{
   domain::{
@@ -15,6 +15,9 @@ use serde_json::{Value, json};
 
 use crate::http::openapi::ErrorResponse;
 use crate::http::state::AppState;
+use crate::http::contracts::{
+  API_VERSION, DECISION_PAYLOAD_CANONICAL_VERSION, DECISION_PAYLOAD_LEGACY_SUNSET,
+};
 
 #[utoipa::path(
   post,
@@ -33,8 +36,8 @@ use crate::http::state::AppState;
 pub async fn create_decision(
   State(state): State<AppState>,
   Json(request): Json<Value>,
-) -> Result<Json<Decision>, (StatusCode, Json<ErrorResponse>)> {
-  let event = parse_event_payload(request).map_err(|message| {
+) -> Result<(HeaderMap, Json<Decision>), (StatusCode, Json<ErrorResponse>)> {
+  let parsed = parse_event_payload(request).map_err(|message| {
     (
       StatusCode::UNPROCESSABLE_ENTITY,
       Json(ErrorResponse {
@@ -44,6 +47,7 @@ pub async fn create_decision(
       }),
     )
   })?;
+  let event = parsed.event;
 
   let decision = match DecisionService::decide(state.engine.as_ref(), &event).await {
     Ok(decision) => decision,
@@ -58,22 +62,45 @@ pub async fn create_decision(
     Err(error) => return Err(map_decision_error(error)),
   };
 
-  Ok(Json(decision))
-}
-
-fn parse_event_payload(request: Value) -> Result<Event, String> {
-  if let Ok(event) = serde_json::from_value::<Event>(request.clone()) {
-    return Ok(event);
+  let mut headers = HeaderMap::new();
+  headers.insert("x-rve-api-version", HeaderValue::from_static(API_VERSION));
+  headers.insert(
+    "x-rve-decision-contract-version",
+    HeaderValue::from_static(DECISION_PAYLOAD_CANONICAL_VERSION),
+  );
+  if parsed.used_legacy_payload_alias {
+    headers.insert("deprecation", HeaderValue::from_static("true"));
+    headers.insert("sunset", HeaderValue::from_static(DECISION_PAYLOAD_LEGACY_SUNSET));
+    headers.insert(
+      header::WARNING,
+      HeaderValue::from_static(
+        "299 - \"payload.money.value is deprecated; use payload.money.minor_units\"",
+      ),
+    );
   }
 
-  let normalized = normalize_legacy_money_payload(request)?;
+  Ok((headers, Json(decision)))
+}
+
+struct ParsedEventPayload {
+  event: Event,
+  used_legacy_payload_alias: bool,
+}
+
+fn parse_event_payload(request: Value) -> Result<ParsedEventPayload, String> {
+  if let Ok(event) = serde_json::from_value::<Event>(request.clone()) {
+    return Ok(ParsedEventPayload { event, used_legacy_payload_alias: false });
+  }
+
+  let (normalized, used_legacy_payload_alias) = normalize_legacy_money_payload(request)?;
   serde_json::from_value::<Event>(normalized)
+    .map(|event| ParsedEventPayload { event, used_legacy_payload_alias })
     .map_err(|err| format!("invalid event payload: {err}"))
 }
 
-fn normalize_legacy_money_payload(mut request: Value) -> Result<Value, String> {
+fn normalize_legacy_money_payload(mut request: Value) -> Result<(Value, bool), String> {
   let Some(payload) = request.get_mut("payload").and_then(Value::as_object_mut) else {
-    return Ok(request);
+    return Ok((request, false));
   };
 
   if payload.get("type").is_none() {
@@ -84,24 +111,24 @@ fn normalize_legacy_money_payload(mut request: Value) -> Result<Value, String> {
     .get_mut("money")
     .and_then(Value::as_object_mut)
   else {
-    return Ok(request);
+    return Ok((request, false));
   };
 
   if money.get("minor_units").is_some() {
-    return Ok(request);
+    return Ok((request, false));
   }
 
   let Some(ccy) = money.get("ccy").and_then(Value::as_str) else {
-    return Ok(request);
+    return Ok((request, false));
   };
   let Some(raw_value) = money.get("value") else {
-    return Ok(request);
+    return Ok((request, false));
   };
 
   let amount_text = match raw_value {
     Value::String(text) => text.clone(),
     Value::Number(number) => number.to_string(),
-    _ => return Ok(request),
+    _ => return Ok((request, false)),
   };
 
   let currency = Currency::new(ccy).map_err(|err| format!("invalid event payload: {err}"))?;
@@ -111,7 +138,7 @@ fn normalize_legacy_money_payload(mut request: Value) -> Result<Value, String> {
   money.remove("value");
   money.insert("minor_units".to_owned(), json!(amount.minor_units()));
 
-  Ok(request)
+  Ok((request, true))
 }
 
 fn map_decision_error(error: DecisionServiceError) -> (StatusCode, Json<ErrorResponse>) {

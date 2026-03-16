@@ -6,9 +6,11 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use rve_core::PKG_VERSION;
-
-const FIELDS_VERSION: &str = "2026-03-08";
-const RULE_SCHEMA_VERSION: &str = "2026-02-01";
+use crate::http::contracts::{
+  API_VERSION, DECISION_PAYLOAD_CANONICAL_FIELD, DECISION_PAYLOAD_CANONICAL_VERSION,
+  DECISION_PAYLOAD_LEGACY_ALIAS, DECISION_PAYLOAD_LEGACY_SUNSET, FIELDS_VERSION,
+  RULE_SCHEMA_VERSION,
+};
 
 #[derive(Serialize)]
 pub struct FieldsResponse {
@@ -50,8 +52,17 @@ pub struct ContractResponse {
   pub contract_version: &'static str,
   pub api_version: &'static str,
   pub rule_schema_version: &'static str,
+  pub decision_payload: DecisionPayloadContract,
   pub enums: BTreeMap<String, Vec<&'static str>>,
   pub jsonlogic: JsonLogicContract,
+}
+
+#[derive(Serialize)]
+pub struct DecisionPayloadContract {
+  pub canonical_version: &'static str,
+  pub canonical_path: &'static str,
+  pub accepted_legacy_aliases: Vec<&'static str>,
+  pub deprecates_on: &'static str,
 }
 
 #[derive(Serialize)]
@@ -83,8 +94,14 @@ pub async fn contract() -> Json<ContractResponse> {
 
   Json(ContractResponse {
     contract_version: PKG_VERSION,
-    api_version: "v1",
+    api_version: API_VERSION,
     rule_schema_version: RULE_SCHEMA_VERSION,
+    decision_payload: DecisionPayloadContract {
+      canonical_version: DECISION_PAYLOAD_CANONICAL_VERSION,
+      canonical_path: DECISION_PAYLOAD_CANONICAL_FIELD,
+      accepted_legacy_aliases: vec![DECISION_PAYLOAD_LEGACY_ALIAS],
+      deprecates_on: DECISION_PAYLOAD_LEGACY_SUNSET,
+    },
     enums,
     jsonlogic: JsonLogicContract { root_vars: JSONLOGIC_ROOT_VARS.to_vec() },
   })
@@ -93,14 +110,14 @@ pub async fn contract() -> Json<ContractResponse> {
 fn supported_fields() -> Vec<FieldMetadata> {
   vec![
     FieldMetadata {
-      path: "payload.money.value",
-      label: "Money Value",
+      path: "payload.money.minor_units",
+      label: "Money (Minor Units)",
       kind: "number",
       allowed_operators: vec![">", ">=", "<", "<=", "==", "!=", "!==", "==="],
       allowed_values: None,
-      examples: vec![json!(100), json!(5000)],
+      examples: vec![json!(10000), json!(500000)],
       group: "payload.money",
-      description: "Monto de la transaccion.",
+      description: "Monto de la transaccion en unidades menores (centavos).",
     },
     FieldMetadata {
       path: "payload.money.ccy",
@@ -180,7 +197,7 @@ fn supported_fields() -> Vec<FieldMetadata> {
       allowed_values: None,
       examples: vec![json!(1500), json!(7500)],
       group: "extensions.transaction",
-      description: "Monto en `payload.extensions.transaction.amount` (opcional, no sustituye `payload.money.value`).",
+      description: "Monto en `payload.extensions.transaction.amount` (opcional, no sustituye `payload.money.minor_units`).",
     },
   ]
 }

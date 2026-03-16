@@ -54,14 +54,15 @@ impl Modify for ApiInfoModifier {
       FieldsResponseDoc,
       FieldMetadataDoc,
       ContractResponseDoc,
-      JsonLogicContractDoc
+      JsonLogicContractDoc,
+      DecisionPayloadContractDoc
     )
   ),
   tags(
     (name = "health", description = "Health endpoints"),
     (name = "rules", description = "Rules CRUD and validation"),
     (name = "engine", description = "Engine lifecycle operations"),
-    (name = "decisions", description = "Decision endpoint placeholder"),
+    (name = "decisions", description = "Decision evaluation endpoints"),
     (name = "metadata", description = "Builder metadata and contract")
   )
 )]
@@ -303,7 +304,8 @@ pub struct RuleDocumentInputDoc {
     },
     "signals": { "flags": {} },
     "payload": {
-      "money": { "value": 1500.0, "ccy": "USD" },
+      "type": "value_transfer",
+      "money": { "minor_units": 150000, "ccy": "USD" },
       "parties": {
         "originator": {
           "entity_type": "individual",
@@ -344,6 +346,9 @@ pub struct DecisionRequestDoc {
   pub signals: Value,
   /// Transaction payload.
   /// `payload.parties.originator` and `payload.parties.beneficiary` are required.
+  /// Canonical contract expects `payload.type = \"value_transfer\"` and
+  /// `payload.money.minor_units`.
+  /// Legacy alias `payload.money.value` is accepted temporarily and normalized by API.
   pub payload: Value,
 }
 
@@ -426,8 +431,14 @@ pub struct FieldMetadataDoc {
   example = json!({
     "contract_version": "0.1.0",
     "api_version": "v1",
-    "rule_schema_version": "2026-02-01",
-    "enums": {
+      "rule_schema_version": "2026-02-01",
+      "decision_payload": {
+        "canonical_version": "2026-03-16",
+        "canonical_path": "payload.money.minor_units",
+        "accepted_legacy_aliases": ["payload.money.value"],
+        "deprecates_on": "2026-07-01"
+      },
+      "enums": {
       "state.mode": ["staged", "active", "suspended", "deactivated"],
       "enforcement.action": ["allow", "review", "block", "tag_only"]
     },
@@ -440,8 +451,17 @@ pub struct ContractResponseDoc {
   pub contract_version: String,
   pub api_version: String,
   pub rule_schema_version: String,
+  pub decision_payload: DecisionPayloadContractDoc,
   pub enums: BTreeMap<String, Vec<String>>,
   pub jsonlogic: JsonLogicContractDoc,
+}
+
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct DecisionPayloadContractDoc {
+  pub canonical_version: String,
+  pub canonical_path: String,
+  pub accepted_legacy_aliases: Vec<String>,
+  pub deprecates_on: String,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]

@@ -1,4 +1,5 @@
 pub mod api_v1;
+pub mod contracts;
 pub mod health;
 pub mod openapi;
 pub mod state;
