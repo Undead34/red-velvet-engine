@@ -8,6 +8,7 @@ const THIRD_PARTY_LICENSES: &str = include_str!("../../../THIRD_PARTY_LICENSES.m
 pub fn show_project_about(quiet: bool) {
   let source = option_env!("CARGO_PKG_REPOSITORY")
     .filter(|value| !value.trim().is_empty())
+    .or_else(|| option_env!("RVE_SOURCE_URL").filter(|value| !value.trim().is_empty()))
     .unwrap_or("(not declared)");
   let build_unix_ts = option_env!("RVE_BUILD_UNIX_TS").unwrap_or("unknown");
   let build_profile = option_env!("RVE_BUILD_PROFILE").unwrap_or("unknown");
