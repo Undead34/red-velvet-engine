@@ -5,11 +5,33 @@ services:
       memlock: -1
     ports:
       - "6379:6379"
-    # For better performance, consider `host` mode instead `port` to avoid docker NAT.
-    # `host` mode is NOT currently supported in Swarm Mode.
-    # https://docs.docker.com/compose/compose-file/compose-file-v3/#network_mode
-    # network_mode: "host"
     volumes:
       - dragonflydata:/data
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: rve_admin
+      POSTGRES_PASSWORD: rve_password
+      POSTGRES_DB: rve_analytics
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    volumes:
+      - grafanadata:/var/lib/grafana
+
 volumes:
   dragonflydata:
+  pgdata:
+  grafanadata:
