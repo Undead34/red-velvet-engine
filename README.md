@@ -110,17 +110,6 @@ cargo test -p rve-core
 cargo test -p rve
 ```
 
-### Debugging HTTP requests
-
-Para inspeccionar solo ciertos endpoints sin llenar los logs, seteá:
-
-```
-export RVE_HTTP_LOG_PATHS="/api/v1/decisions,/api/v1/decisions/trace"
-export RVE_HTTP_LOG_METHODS="POST"   # opcional
-```
-
-Cada request/respuesta que matchee esos paths se logueará adicionalmente con el target `HTTP_FILTER`. Si no seteás la variable, el comportamiento por defecto no cambia.
-
 ## 🧾 About and third-party licenses
 
 ```bash
