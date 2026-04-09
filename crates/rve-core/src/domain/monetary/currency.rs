@@ -3,7 +3,7 @@ use std::str::FromStr;
 use iso4217_catalog::{CurrencyCode, CurrencyMeta};
 use serde::{Deserialize, Serialize};
 
-use crate::domain::DomainError;
+use crate::domain::{DomainError, DomainResult};
 
 pub use iso4217_catalog::{CATALOG_VERSION, CurrencyStatus};
 pub type CurrencySpec = CurrencyMeta;
@@ -27,7 +27,7 @@ impl Currency {
   /// # Errors
   ///
   /// Returns [`DomainError::InvalidCurrencyCode`] when code is unknown.
-  pub fn new(value: impl Into<String>) -> Result<Self, DomainError> {
+  pub fn new(value: impl Into<String>) -> DomainResult<Self> {
     let value = value.into();
     let code = CurrencyCode::from_str(&value)
       .map_err(|_| DomainError::InvalidCurrencyCode(value.clone()))?;
@@ -90,7 +90,7 @@ impl Currency {
 impl TryFrom<String> for Currency {
   type Error = DomainError;
 
-  fn try_from(value: String) -> Result<Self, Self::Error> {
+  fn try_from(value: String) -> DomainResult<Self> {
     Self::new(value)
   }
 }

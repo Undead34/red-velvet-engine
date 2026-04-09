@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::domain::DomainError;
+use crate::domain::{DomainError, DomainResult};
 
 use super::{
   Header, Payload, context::Context, error::EventError, features::Features, signals::Signals,
@@ -53,7 +53,7 @@ impl Event {
     features: Features,
     signals: Signals,
     payload: Payload,
-  ) -> Result<Self, DomainError> {
+  ) -> DomainResult<Self> {
     Self::try_new(header, context, features, signals, payload).map_err(DomainError::from)
   }
 
@@ -76,7 +76,7 @@ impl Event {
   ///
   /// Returns [`DomainError`] for invalid geo coordinates, party constraints,
   /// or feature chronology.
-  pub fn validate(&self) -> Result<(), DomainError> {
+  pub fn validate(&self) -> DomainResult<()> {
     self.validate_event().map_err(DomainError::from)
   }
 }

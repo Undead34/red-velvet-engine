@@ -1,5 +1,6 @@
 use std::{net::SocketAddr, process::ExitCode};
 
+use rve::bootstrap::AppContainer;
 use tokio::net::TcpListener;
 use tracing::{error, info, info_span};
 
@@ -41,7 +42,8 @@ async fn run() -> Result<(), AppError> {
   let addr: SocketAddr = format!("{}:{}", app.host, app.port).parse()?;
   let listener = TcpListener::bind(addr).await.map_err(AppError::BindFailed)?;
 
-  let state = AppState::new().await;
+  let container = AppContainer::bootstrap().await?;
+  let state = AppState::from(container);
   let router = build_router(state);
 
   info!(target: "BANNER", "Listening on http://{}", addr);

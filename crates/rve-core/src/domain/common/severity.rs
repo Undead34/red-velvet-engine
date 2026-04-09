@@ -81,10 +81,14 @@ impl Severity {
   /// # Examples
   ///
   /// ```
-  /// use rve_core::domain::common::{Severity, SeverityError};
-  ///
-  /// assert_eq!(Severity::new(10).unwrap(), Severity::Catastrophic);
+  /// # use rve_core::domain::common::{Severity, SeverityError};
+  /// # use std::error::Error;
+  /// # fn severity_demo() -> Result<(), Box<dyn Error>> {
+  /// assert_eq!(Severity::new(10)?, Severity::Catastrophic);
   /// assert!(matches!(Severity::new(0), Err(SeverityError::OutOfRange { value: 0 })));
+  /// # Ok(())
+  /// # }
+  /// # severity_demo().unwrap();
   /// ```
   pub const fn new(value: u8) -> Result<Self, SeverityError> {
     match value {

@@ -22,10 +22,14 @@ use thiserror::Error;
 /// # Examples
 ///
 /// ```
-/// use rve_core::domain::common::TimestampMs;
-///
-/// let ts = TimestampMs::new(1_730_000_000_000).unwrap();
+/// # use rve_core::domain::common::TimestampMs;
+/// # use std::error::Error;
+/// # fn ts_demo() -> Result<(), Box<dyn Error>> {
+/// let ts = TimestampMs::new(1_730_000_000_000)?;
 /// assert_eq!(ts.as_u64(), 1_730_000_000_000);
+/// # Ok(())
+/// # }
+/// # ts_demo().unwrap();
 /// ```
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[serde(try_from = "u64", into = "u64")]
@@ -96,11 +100,15 @@ impl TryFrom<SystemTime> for TimestampMs {
   /// # Examples
   ///
   /// ```
-  /// use rve_core::domain::common::TimestampMs;
+  /// # use rve_core::domain::common::TimestampMs;
+  /// # use std::error::Error;
   /// use std::time::{Duration, UNIX_EPOCH};
-  ///
-  /// let ts = TimestampMs::try_from(UNIX_EPOCH + Duration::from_millis(123)).unwrap();
+  /// # fn try_from_demo() -> Result<(), Box<dyn Error>> {
+  /// let ts = TimestampMs::try_from(UNIX_EPOCH + Duration::from_millis(123))?;
   /// assert_eq!(ts.as_u64(), 123);
+  /// # Ok(())
+  /// # }
+  /// # try_from_demo().unwrap();
   /// ```
   fn try_from(value: SystemTime) -> Result<Self, Self::Error> {
     let millis =

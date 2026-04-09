@@ -4,7 +4,7 @@ use rve_core::domain::{
   rule::{
     RolloutPolicy, Rule, RuleAudit, RuleAuditError, RuleDecision, RuleDefinition, RuleEnforcement,
     RuleEvaluation, RuleExpression, RuleIdentity, RuleMode, RulePolicy, RulePolicyError,
-    RuleSchedule, RuleState, RuleStateError,
+    RuleSchedule, RuleScope, RuleState, RuleStateError,
   },
 };
 
@@ -77,6 +77,7 @@ fn rejects_invalid_state_in_rule_constructor() {
   let rule = Rule::new(
     RuleId::new_v7(),
     valid_identity(),
+    RuleScope::all(),
     invalid_policy,
     valid_definition(),
     valid_outcome(),
@@ -108,6 +109,7 @@ fn rejects_invalid_schedule_in_rule_constructor() {
   let rule = Rule::new(
     RuleId::new_v7(),
     valid_identity(),
+    RuleScope::all(),
     invalid_policy,
     valid_definition(),
     valid_outcome(),
@@ -127,6 +129,7 @@ fn rejects_invalid_rollout_in_rule_constructor() {
   let rule = Rule::new(
     RuleId::new_v7(),
     valid_identity(),
+    RuleScope::all(),
     invalid_policy,
     valid_definition(),
     valid_outcome(),
@@ -140,6 +143,7 @@ fn validates_rule_transitions() {
   let mut rule = Rule::new(
     RuleId::new_v7(),
     valid_identity(),
+    RuleScope::all(),
     RulePolicy::new(
       RuleState::new(
         RuleMode::Staged,
@@ -172,6 +176,7 @@ fn accepts_valid_rule_and_checks_executable() {
   let mut rule = Rule::new(
     RuleId::new_v7(),
     valid_identity(),
+    RuleScope::all(),
     RulePolicy::new(
       RuleState::new(
         RuleMode::Active,
@@ -195,6 +200,7 @@ fn accepts_valid_rule_and_checks_executable() {
   let scheduled_rule = Rule::new(
     RuleId::new_v7(),
     valid_identity(),
+    RuleScope::all(),
     RulePolicy::new(
       RuleState::new(
         RuleMode::Active,

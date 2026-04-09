@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::expression::RuleExpression;
-use crate::domain::DomainError;
+use crate::domain::DomainResult;
 
 /// Pair of expressions used to evaluate a rule.
 ///
@@ -21,7 +21,7 @@ impl RuleEvaluation {
   /// # Errors
   ///
   /// Returns [`DomainError`] if either expression has a disallowed `var` root.
-  pub fn new(condition: RuleExpression, logic: RuleExpression) -> Result<Self, DomainError> {
+  pub fn new(condition: RuleExpression, logic: RuleExpression) -> DomainResult<Self> {
     let this = Self { condition, logic };
     this.validate()?;
     Ok(this)
@@ -32,7 +32,7 @@ impl RuleEvaluation {
   /// # Errors
   ///
   /// Returns [`DomainError`] if either expression has a disallowed `var` root.
-  pub fn validate(&self) -> Result<(), DomainError> {
+  pub fn validate(&self) -> DomainResult<()> {
     self.condition.validate_vars()?;
     self.logic.validate_vars()?;
     Ok(())

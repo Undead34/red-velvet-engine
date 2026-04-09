@@ -40,6 +40,7 @@ mod policy;
 mod rollout;
 mod rule;
 mod schedule;
+mod scope;
 mod state;
 
 pub use action::RuleAction;
@@ -56,4 +57,5 @@ pub use policy::{RulePolicy, RulePolicyError};
 pub use rollout::{RolloutPolicy, RuleRolloutError};
 pub use rule::Rule;
 pub use schedule::{RuleSchedule, RuleScheduleError};
+pub use scope::{RuleScope, RuleScopeError};
 pub use state::{RuleState, RuleStateError};

@@ -1,5 +1,6 @@
 pub mod about;
 pub mod banner;
+pub mod bootstrap;
 pub mod cli;
 pub mod engine;
 pub mod error;

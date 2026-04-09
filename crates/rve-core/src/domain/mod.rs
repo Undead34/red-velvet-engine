@@ -30,8 +30,9 @@ pub mod common;
 pub mod error;
 pub mod event;
 pub mod monetary;
+pub mod prelude;
 pub mod rule;
 
-pub use error::DomainError;
+pub use error::{DomainError, DomainResult};
 pub use event::Event;
 pub use rule::Rule;

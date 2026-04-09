@@ -4,7 +4,7 @@ use axum::{
   http::StatusCode,
   response::{IntoResponse, Response},
 };
-use rve_core::{domain::common::RuleId, ports::RuleRepositoryError};
+use rve_core::{domain::common::RuleId, ports::rule_repository::RuleRepositoryError};
 use serde::Serialize;
 
 pub type ApiResult<T> = Result<T, ApiError>;

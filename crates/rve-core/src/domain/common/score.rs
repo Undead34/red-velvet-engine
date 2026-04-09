@@ -20,10 +20,14 @@ use crate::domain::common::Severity;
 /// # Examples
 ///
 /// ```
-/// use rve_core::domain::common::Score;
-///
-/// let score = Score::new(6.5).unwrap();
+/// # use rve_core::domain::common::Score;
+/// # use std::error::Error;
+/// # fn demo() -> Result<(), Box<dyn Error>> {
+/// let score = Score::new(6.5)?;
 /// assert_eq!(score.as_f32(), 6.5);
+/// # Ok(())
+/// # }
+/// # demo().unwrap();
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(try_from = "f32", into = "f32")]
@@ -55,10 +59,14 @@ impl Score {
   /// # Examples
   ///
   /// ```
-  /// use rve_core::domain::common::{Score, ScoreError};
-  ///
-  /// assert_eq!(Score::new(7.25).unwrap().as_f32(), 7.25);
+  /// # use rve_core::domain::common::{Score, ScoreError};
+  /// # use std::error::Error;
+  /// # fn score_new() -> Result<(), Box<dyn Error>> {
+  /// assert_eq!(Score::new(7.25)?.as_f32(), 7.25);
   /// assert!(matches!(Score::new(0.9), Err(ScoreError::OutOfRange { .. })));
+  /// # Ok(())
+  /// # }
+  /// # score_new().unwrap();
   /// ```
   pub fn new(value: f32) -> Result<Self, ScoreError> {
     if !value.is_finite() {

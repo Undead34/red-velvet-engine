@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::domain::DomainError;
+use crate::domain::{DomainError, DomainResult};
 
 /// Maximum nesting depth accepted by the validator.
 const MAX_EXPRESSION_DEPTH: usize = 20;
@@ -95,7 +95,7 @@ impl RuleExpression {
   ///
   /// Returns [`DomainError::InvalidRuleExpression`] if the expression exceeds
   /// configured limits or uses unsupported operators.
-  pub fn new(value: Value) -> Result<Self, DomainError> {
+  pub fn new(value: Value) -> DomainResult<Self> {
     validate_expression(&value)?;
     Ok(Self { value })
   }
@@ -121,7 +121,7 @@ impl RuleExpression {
   /// # Errors
   ///
   /// Returns an error if any `var` path has a disallowed root.
-  pub fn validate_vars(&self) -> Result<(), DomainError> {
+  pub fn validate_vars(&self) -> DomainResult<()> {
     let mut vars = Vec::new();
     collect_var_paths(&self.value, &mut vars);
     for path in vars {
@@ -137,13 +137,13 @@ impl RuleExpression {
 }
 
 /// Validates the expression tree.
-fn validate_expression(value: &Value) -> Result<(), DomainError> {
+fn validate_expression(value: &Value) -> DomainResult<()> {
   let mut nodes = 0usize;
   validate_node(value, 0, &mut nodes)
 }
 
 /// Validates a single node in the expression tree.
-fn validate_node(value: &Value, depth: usize, nodes: &mut usize) -> Result<(), DomainError> {
+fn validate_node(value: &Value, depth: usize, nodes: &mut usize) -> DomainResult<()> {
   if depth > MAX_EXPRESSION_DEPTH {
     return Err(DomainError::InvalidRuleExpression("expression exceeds max depth".to_owned()));
   }

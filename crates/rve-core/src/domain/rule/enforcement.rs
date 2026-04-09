@@ -22,7 +22,7 @@ pub struct RuleEnforcement {
   /// Categorical metadata used for downstream telemetry, analytics, and grouping.
   pub tags: Vec<String>,
 
-  /// An optional suppression window (in milliseconds) to prevent redundant triggers.
+  /// Optional suppression window in milliseconds to reduce repeated hits.
   pub cooldown_ms: Option<u64>,
 
   /// Ordered function pipeline to be mapped by runtime adapters.

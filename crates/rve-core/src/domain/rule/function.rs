@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::domain::DomainError;
+use crate::domain::{DomainError, DomainResult};
 
 /// Logical function categories used by fraud rule outcomes.
 ///
@@ -50,7 +50,7 @@ impl RuleFunctionSpec {
   ///
   /// Returns [`DomainError::InvalidRuleFunctionConfig`] when `config` does not
   /// satisfy minimal shape and kind-specific invariants.
-  pub fn new(kind: FunctionKind, config: Value) -> Result<Self, DomainError> {
+  pub fn new(kind: FunctionKind, config: Value) -> DomainResult<Self> {
     validate_function_config(&kind, &config)?;
     Ok(Self { kind, config })
   }
@@ -60,12 +60,12 @@ impl RuleFunctionSpec {
   /// # Errors
   ///
   /// Returns [`DomainError::InvalidRuleFunctionConfig`] for invalid configs.
-  pub fn validate(&self) -> Result<(), DomainError> {
+  pub fn validate(&self) -> DomainResult<()> {
     validate_function_config(&self.kind, &self.config)
   }
 }
 
-fn validate_function_config(kind: &FunctionKind, config: &Value) -> Result<(), DomainError> {
+fn validate_function_config(kind: &FunctionKind, config: &Value) -> DomainResult<()> {
   let object = config.as_object().ok_or_else(|| DomainError::InvalidRuleFunctionConfig {
     kind: kind.as_str().to_owned(),
     reason: "config must be a JSON object".to_owned(),

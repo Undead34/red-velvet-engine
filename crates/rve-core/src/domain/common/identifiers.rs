@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::validation::is_valid_identifier;
-use crate::domain::DomainError;
+use crate::domain::{DomainError, DomainResult};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
@@ -23,7 +23,7 @@ impl RuleId {
 impl TryFrom<String> for RuleId {
   type Error = DomainError;
 
-  fn try_from(value: String) -> Result<Self, Self::Error> {
+  fn try_from(value: String) -> DomainResult<Self> {
     Uuid::parse_str(&value).map(Self).map_err(|_| DomainError::InvalidRuleId(value))
   }
 }
@@ -45,7 +45,7 @@ impl fmt::Display for RuleId {
 pub struct AccountId(String);
 
 impl AccountId {
-  pub fn new(value: impl Into<String>) -> Result<Self, DomainError> {
+  pub fn new(value: impl Into<String>) -> DomainResult<Self> {
     let value = value.into();
     if is_valid_identifier(&value) {
       Ok(Self(value))
@@ -61,7 +61,7 @@ impl AccountId {
 
 impl TryFrom<String> for AccountId {
   type Error = DomainError;
-  fn try_from(value: String) -> Result<Self, Self::Error> {
+  fn try_from(value: String) -> DomainResult<Self> {
     Self::new(value)
   }
 }
@@ -77,7 +77,7 @@ impl From<AccountId> for String {
 pub struct BankRef(String);
 
 impl BankRef {
-  pub fn new(value: impl Into<String>) -> Result<Self, DomainError> {
+  pub fn new(value: impl Into<String>) -> DomainResult<Self> {
     let value = value.into();
     if is_valid_identifier(&value) {
       Ok(Self(value))
@@ -93,7 +93,7 @@ impl BankRef {
 
 impl TryFrom<String> for BankRef {
   type Error = DomainError;
-  fn try_from(value: String) -> Result<Self, Self::Error> {
+  fn try_from(value: String) -> DomainResult<Self> {
     Self::new(value)
   }
 }
@@ -109,7 +109,7 @@ impl From<BankRef> for String {
 pub struct DeviceId(String);
 
 impl DeviceId {
-  pub fn new(value: impl Into<String>) -> Result<Self, DomainError> {
+  pub fn new(value: impl Into<String>) -> DomainResult<Self> {
     let value = value.into();
     if is_valid_identifier(&value) {
       Ok(Self(value))
@@ -121,7 +121,7 @@ impl DeviceId {
 
 impl TryFrom<String> for DeviceId {
   type Error = DomainError;
-  fn try_from(value: String) -> Result<Self, Self::Error> {
+  fn try_from(value: String) -> DomainResult<Self> {
     Self::new(value)
   }
 }
@@ -137,7 +137,7 @@ impl From<DeviceId> for String {
 pub struct SessionId(String);
 
 impl SessionId {
-  pub fn new(value: impl Into<String>) -> Result<Self, DomainError> {
+  pub fn new(value: impl Into<String>) -> DomainResult<Self> {
     let value = value.into();
     if is_valid_identifier(&value) {
       Ok(Self(value))
@@ -149,7 +149,7 @@ impl SessionId {
 
 impl TryFrom<String> for SessionId {
   type Error = DomainError;
-  fn try_from(value: String) -> Result<Self, Self::Error> {
+  fn try_from(value: String) -> DomainResult<Self> {
     Self::new(value)
   }
 }
@@ -176,7 +176,7 @@ impl EventId {
 
 impl TryFrom<String> for EventId {
   type Error = DomainError;
-  fn try_from(value: String) -> Result<Self, Self::Error> {
+  fn try_from(value: String) -> DomainResult<Self> {
     Uuid::parse_str(&value).map(Self).map_err(|_| DomainError::InvalidEventId(value))
   }
 }

@@ -4,14 +4,14 @@ use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 
 use super::validation::{is_valid_kyc_level, is_valid_locale_tag, is_valid_user_agent};
-use crate::domain::DomainError;
+use crate::domain::{DomainError, DomainResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(try_from = "String", into = "String")]
 pub struct CountryCode(String);
 
 impl CountryCode {
-  pub fn new(value: impl Into<String>) -> Result<Self, DomainError> {
+  pub fn new(value: impl Into<String>) -> DomainResult<Self> {
     let value = value.into();
     if value.len() == 2 && value.chars().all(|c| c.is_ascii_uppercase()) {
       Ok(Self(value))
@@ -27,7 +27,7 @@ impl CountryCode {
 
 impl TryFrom<String> for CountryCode {
   type Error = DomainError;
-  fn try_from(value: String) -> Result<Self, Self::Error> {
+  fn try_from(value: String) -> DomainResult<Self> {
     Self::new(value)
   }
 }
@@ -43,7 +43,7 @@ impl From<CountryCode> for String {
 pub struct KycLevel(String);
 
 impl KycLevel {
-  pub fn new(value: impl Into<String>) -> Result<Self, DomainError> {
+  pub fn new(value: impl Into<String>) -> DomainResult<Self> {
     let value = value.into();
     if is_valid_kyc_level(&value) {
       Ok(Self(value))
@@ -59,7 +59,7 @@ impl KycLevel {
 
 impl TryFrom<String> for KycLevel {
   type Error = DomainError;
-  fn try_from(value: String) -> Result<Self, Self::Error> {
+  fn try_from(value: String) -> DomainResult<Self> {
     Self::new(value)
   }
 }
@@ -75,7 +75,7 @@ impl From<KycLevel> for String {
 pub struct LocaleTag(String);
 
 impl LocaleTag {
-  pub fn new(value: impl Into<String>) -> Result<Self, DomainError> {
+  pub fn new(value: impl Into<String>) -> DomainResult<Self> {
     let value = value.into();
     if is_valid_locale_tag(&value) {
       Ok(Self(value))
@@ -87,7 +87,7 @@ impl LocaleTag {
 
 impl TryFrom<String> for LocaleTag {
   type Error = DomainError;
-  fn try_from(value: String) -> Result<Self, Self::Error> {
+  fn try_from(value: String) -> DomainResult<Self> {
     Self::new(value)
   }
 }
@@ -103,7 +103,7 @@ impl From<LocaleTag> for String {
 pub struct TimezoneName(String);
 
 impl TimezoneName {
-  pub fn new(value: impl Into<String>) -> Result<Self, DomainError> {
+  pub fn new(value: impl Into<String>) -> DomainResult<Self> {
     let value = value.into();
     if Tz::from_str(&value).is_ok() {
       Ok(Self(value))
@@ -115,7 +115,7 @@ impl TimezoneName {
 
 impl TryFrom<String> for TimezoneName {
   type Error = DomainError;
-  fn try_from(value: String) -> Result<Self, Self::Error> {
+  fn try_from(value: String) -> DomainResult<Self> {
     Self::new(value)
   }
 }
@@ -131,7 +131,7 @@ impl From<TimezoneName> for String {
 pub struct UserAgent(String);
 
 impl UserAgent {
-  pub fn new(value: impl Into<String>) -> Result<Self, DomainError> {
+  pub fn new(value: impl Into<String>) -> DomainResult<Self> {
     let value = value.into();
     if is_valid_user_agent(&value) {
       Ok(Self(value))
@@ -143,7 +143,7 @@ impl UserAgent {
 
 impl TryFrom<String> for UserAgent {
   type Error = DomainError;
-  fn try_from(value: String) -> Result<Self, Self::Error> {
+  fn try_from(value: String) -> DomainResult<Self> {
     Self::new(value)
   }
 }

@@ -20,15 +20,19 @@ use super::Currency;
 /// # Examples
 ///
 /// ```
-/// use rve_core::domain::common::{Currency, Money};
+/// # use rve_core::domain::common::{Currency, Money};
+/// # use std::error::Error;
+/// # fn run() -> Result<(), Box<dyn Error>> {
+/// let usd = Currency::new("USD")?;
 ///
-/// let usd = Currency::new("USD").unwrap();
-///
-/// let from_major = Money::from_major_str("12.34", usd).unwrap();
+/// let from_major = Money::from_major_str("12.34", usd.clone())?;
 /// assert_eq!(from_major.minor_units(), 1_234);
 ///
-/// let from_minor = Money::from_minor(1_234, Currency::new("USD").unwrap()).unwrap();
+/// let from_minor = Money::from_minor(1_234, usd)?;
 /// assert_eq!(from_minor.value(), 12.34);
+/// # Ok(())
+/// # }
+/// # run().unwrap();
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Money {
@@ -60,10 +64,14 @@ impl Money {
   /// # Examples
   ///
   /// ```
-  /// use rve_core::domain::common::{Currency, Money};
-  ///
-  /// let money = Money::from_minor(1_050, Currency::new("USD").unwrap()).unwrap();
+  /// # use rve_core::domain::common::{Currency, Money};
+  /// # use std::error::Error;
+  /// # fn example() -> Result<(), Box<dyn Error>> {
+  /// let money = Money::from_minor(1_050, Currency::new("USD")?)?;
   /// assert_eq!(money.value(), 10.5);
+  /// # Ok(())
+  /// # }
+  /// # example().unwrap();
   /// ```
   pub fn from_minor(minor_units: u64, ccy: Currency) -> Result<Self, MoneyError> {
     Ok(Self { minor_units, ccy })
@@ -85,15 +93,19 @@ impl Money {
   /// # Examples
   ///
   /// ```
-  /// use rve_core::domain::common::{Currency, Money};
+  /// # use rve_core::domain::common::{Currency, Money};
+  /// # use std::error::Error;
+  /// # fn parse_demo() -> Result<(), Box<dyn Error>> {
+  /// let usd = Currency::new("USD")?;
+  /// let jpy = Currency::new("JPY")?;
   ///
-  /// let usd = Currency::new("USD").unwrap();
-  /// let jpy = Currency::new("JPY").unwrap();
-  ///
-  /// let usd_money = Money::from_major_str("123.45", usd).unwrap();
+  /// let usd_money = Money::from_major_str("123.45", usd)?;
   /// assert_eq!(usd_money.minor_units(), 12_345);
   ///
   /// assert!(Money::from_major_str("123.45", jpy).is_err());
+  /// # Ok(())
+  /// # }
+  /// # parse_demo().unwrap();
   /// ```
   pub fn from_major_str(value: &str, ccy: Currency) -> Result<Self, MoneyError> {
     let value = value.trim();

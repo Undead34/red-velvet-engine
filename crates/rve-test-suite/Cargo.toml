@@ -17,3 +17,4 @@ chrono = { version = "0.4.43", features = ["serde"] }
 tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread"] }
 axum = "0.8.8"
 tower = { version = "0.5.2", features = ["util"] }
+async-trait = { workspace = true }
