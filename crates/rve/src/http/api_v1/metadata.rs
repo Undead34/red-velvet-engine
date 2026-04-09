@@ -1,16 +1,16 @@
 use std::collections::BTreeMap;
 
 use axum::Json;
-use rve_core::domain::rule::JSONLOGIC_ROOT_VARS;
+use rve_core::domain::{common::Channel, rule::JSONLOGIC_ROOT_VARS};
 use serde::Serialize;
 use serde_json::{Value, json};
 
-use rve_core::PKG_VERSION;
 use crate::http::contracts::{
   API_VERSION, DECISION_PAYLOAD_CANONICAL_FIELD, DECISION_PAYLOAD_CANONICAL_VERSION,
   DECISION_PAYLOAD_LEGACY_ALIAS, DECISION_PAYLOAD_LEGACY_SUNSET, FIELDS_VERSION,
   RULE_SCHEMA_VERSION,
 };
+use rve_core::PKG_VERSION;
 
 #[derive(Serialize)]
 pub struct FieldsResponse {
@@ -90,6 +90,7 @@ pub async fn contract() -> Json<ContractResponse> {
     "enforcement.severity".to_owned(),
     vec!["none", "low", "moderate", "high", "very_high", "catastrophic"],
   );
+  enums.insert("scope.channels".to_owned(), Channel::known_values().to_vec());
   enums.insert("signals.flags.*".to_owned(), vec!["unknown", "no", "yes"]);
 
   Json(ContractResponse {
@@ -109,6 +110,16 @@ pub async fn contract() -> Json<ContractResponse> {
 
 fn supported_fields() -> Vec<FieldMetadata> {
   vec![
+    FieldMetadata {
+      path: "event.header.channel",
+      label: "Event Channel",
+      kind: "enum",
+      allowed_operators: vec!["==", "===", "!=", "!==", "in"],
+      allowed_values: Some(Channel::known_values().to_vec()),
+      examples: vec![json!("web"), json!("mobile")],
+      group: "event.header",
+      description: "Canal de entrada del evento. Se usa para scope de reglas y routing del runtime.",
+    },
     FieldMetadata {
       path: "payload.money.minor_units",
       label: "Money (Minor Units)",

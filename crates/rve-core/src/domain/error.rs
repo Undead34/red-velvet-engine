@@ -1,16 +1,25 @@
 use crate::domain::common::{MoneyError, TimestampMsError};
 use crate::domain::event::{EventError, EventFeaturesError, EventGeoError, EventPartyError};
-use crate::domain::rule::{RulePolicyError, RuleRolloutError, RuleScheduleError, RuleStateError};
+use crate::domain::rule::{
+  RulePolicyError, RuleRolloutError, RuleScheduleError, RuleScopeError, RuleStateError,
+};
 use thiserror::Error;
+
+/// Result alias used by domain constructors and invariants.
+pub type DomainResult<T> = Result<T, DomainError>;
 
 /// Top-level error type for the domain layer.
 ///
 /// Component-level errors are mapped into this type at aggregate boundaries.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DomainError {
   /// Error from rule policy validation or transition rules.
   #[error(transparent)]
   RulePolicy(#[from] RulePolicyError),
+  /// Error from rule scope validation.
+  #[error(transparent)]
+  RuleScope(#[from] RuleScopeError),
   /// Error from event domain validation.
   #[error(transparent)]
   Event(#[from] EventError),

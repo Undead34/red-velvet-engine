@@ -5,7 +5,7 @@ use axum::{
   response::IntoResponse,
 };
 use serde_json::Value;
-use tracing::warn;
+use tracing::{info, instrument, warn};
 
 use crate::http::state::AppState;
 
@@ -32,6 +32,7 @@ use super::{
     (status = 500, description = "Repository error", body = crate::http::openapi::ErrorResponse)
   )
 )]
+#[instrument(name = "http.rules.list", skip(state, pagination))]
 pub async fn list_rules(
   State(state): State<AppState>,
   Query(pagination): Query<Pagination>,
@@ -67,6 +68,7 @@ pub async fn list_rules(
     (status = 500, description = "Internal server error during repository save", body = crate::http::openapi::ErrorResponse)
   )
 )]
+#[instrument(name = "http.rules.create", skip(state, payload))]
 pub async fn create_rule(
   State(state): State<AppState>,
   payload: Result<Json<RuleDocumentInput>, JsonRejection>,
@@ -81,6 +83,7 @@ pub async fn create_rule(
   let created = state.rule_repo.create(rule).await.map_err(map_repository_error)?;
   let version = rule_version(&created)?;
   let headers = response_version_headers(&version)?;
+  info!(rule_id = %created.id, version, "rule created");
 
   Ok((StatusCode::CREATED, headers, Json(created)))
 }
@@ -103,6 +106,7 @@ pub async fn create_rule(
     (status = 500, description = "Internal server error", body = crate::http::openapi::ErrorResponse)
   )
 )]
+#[instrument(name = "http.rules.get", skip(state), fields(rule_id = %id))]
 pub async fn get_rule(
   State(state): State<AppState>,
   Path(id): Path<String>,
@@ -148,6 +152,7 @@ pub async fn get_rule(
     (status = 500, description = "Internal server error during repository update", body = crate::http::openapi::ErrorResponse)
   )
 )]
+#[instrument(name = "http.rules.update", skip(state, headers, payload), fields(rule_id = %id))]
 pub async fn update_rule(
   State(state): State<AppState>,
   headers: HeaderMap,
@@ -176,6 +181,7 @@ pub async fn update_rule(
   let updated = state.rule_repo.replace(rule).await.map_err(map_repository_error)?;
   let version = rule_version(&updated)?;
   let response_headers = response_version_headers(&version)?;
+  info!(rule_id = %updated.id, version, "rule replaced");
 
   Ok((response_headers, Json(updated)))
 }
@@ -199,6 +205,7 @@ pub async fn update_rule(
     (status = 500, description = "Internal server error during repository deletion", body = crate::http::openapi::ErrorResponse)
   )
 )]
+#[instrument(name = "http.rules.delete", skip(state, headers), fields(rule_id = %id))]
 pub async fn delete_rule(
   State(state): State<AppState>,
   headers: HeaderMap,
@@ -217,6 +224,8 @@ pub async fn delete_rule(
   assert_if_match(&headers, &current_version)?;
 
   state.rule_repo.delete(&id).await.map_err(map_repository_error)?;
+  info!(rule_id = %id, "rule deleted");
+
   Ok(StatusCode::NO_CONTENT)
 }
 
@@ -247,6 +256,7 @@ pub async fn delete_rule(
     (status = 500, description = "Internal server error during repository update", body = crate::http::openapi::ErrorResponse)
   )
 )]
+#[instrument(name = "http.rules.patch", skip(state, headers, payload), fields(rule_id = %id))]
 pub async fn patch_rule(
   State(state): State<AppState>,
   headers: HeaderMap,
@@ -276,6 +286,7 @@ pub async fn patch_rule(
   let saved = state.rule_repo.replace(rule).await.map_err(map_repository_error)?;
   let version = rule_version(&saved)?;
   let response_headers = response_version_headers(&version)?;
+  info!(rule_id = %saved.id, version, "rule patched");
 
   Ok((response_headers, Json(saved)))
 }

@@ -30,6 +30,7 @@ impl Modify for ApiInfoModifier {
     crate::http::api_v1::engine::status,
     crate::http::api_v1::engine::reload,
     crate::http::api_v1::decisions::create_decision,
+    crate::http::api_v1::decisions::create_decision_trace,
     crate::http::api_v1::metadata::fields,
     crate::http::api_v1::metadata::contract
   ),
@@ -41,6 +42,7 @@ impl Modify for ApiInfoModifier {
       ValidationIssue,
       RuleDoc,
       RuleMetaDoc,
+      RuleScopeDoc,
       RuleStateDoc,
       RuleAuditDoc,
       RuleScheduleDoc,
@@ -51,6 +53,12 @@ impl Modify for ApiInfoModifier {
       RuleListResponseDoc,
       PaginationMetaDoc,
       RuleDocumentInputDoc,
+      DecisionRequestDoc,
+      DecisionResponseDoc,
+      DecisionTraceResponseDoc,
+      DecisionHitDoc,
+      RuleEngineTraceDoc,
+      RuleEngineTraceStepDoc,
       FieldsResponseDoc,
       FieldMetadataDoc,
       ContractResponseDoc,
@@ -125,6 +133,7 @@ pub struct PaginationMetaDoc {
 pub struct RuleDoc {
   pub id: String,
   pub meta: RuleMetaDoc,
+  pub scope: RuleScopeDoc,
   pub state: RuleStateDoc,
   pub schedule: RuleScheduleDoc,
   pub rollout: RolloutPolicyDoc,
@@ -140,6 +149,11 @@ pub struct RuleMetaDoc {
   pub version: String,
   pub author: String,
   pub tags: Option<Vec<String>>,
+}
+
+#[derive(Serialize, Deserialize, ToSchema, Default)]
+pub struct RuleScopeDoc {
+  pub channels: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
@@ -191,11 +205,11 @@ pub struct RuleEnforcementDoc {
 #[derive(Serialize, Deserialize, ToSchema)]
 #[schema(
   example = json!({
-    "mode": "placeholder",
-    "ready": false,
-    "repository_rules": 2,
-    "loaded_rules": 0,
-    "message": "runtime engine is not implemented"
+    "mode": "dataflow-rs",
+    "ready": true,
+    "repository_rules": 12,
+    "loaded_rules": 12,
+    "message": "runtime ready"
   })
 )]
 pub struct EngineStatusResponseDoc {
@@ -217,6 +231,9 @@ pub struct EngineStatusResponseDoc {
       "author": "RiskOps",
       "tags": ["high_value"]
     },
+    "scope": {
+      "channels": ["web", "mobile"]
+    },
     "state": {
       "mode": "active",
       "audit": {
@@ -234,7 +251,7 @@ pub struct EngineStatusResponseDoc {
       "condition": true,
       "logic": {
         "and": [
-          { ">": [ { "var": "payload.money.value" }, 1000 ] },
+          { ">": [ { "var": "payload.money.minor_units" }, 100000 ] },
           { ">=": [ { "var": "features.fin.current_hour_count" }, 1 ] }
         ]
       }
@@ -261,6 +278,7 @@ pub struct EngineStatusResponseDoc {
 pub struct RuleDocumentInputDoc {
   pub id: Option<String>,
   pub meta: RuleMetaDoc,
+  pub scope: RuleScopeDoc,
   pub state: RuleStateDoc,
   pub schedule: RuleScheduleDoc,
   pub rollout: RolloutPolicyDoc,
@@ -386,6 +404,45 @@ pub struct DecisionResponseDoc {
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
+#[schema(
+  example = json!({
+    "decision": {
+      "score": 6.5,
+      "outcome": "review",
+      "hits": [
+        {
+          "rule_id": "01952031-1a77-7f0c-9f3c-bfd27d450001",
+          "action": "review",
+          "severity": "high",
+          "score_delta": 6.5,
+          "explanation": "High value transaction",
+          "tags": ["financial_fraud"]
+        }
+      ],
+      "evaluated_rules": 1,
+      "executed_rules": 1,
+      "rollout_bucket": 42
+    },
+    "trace": {
+      "channel": "web",
+      "steps": [
+        {
+          "workflow_id": "01952031-1a77-7f0c-9f3c-bfd27d450001::__rve_channel__:web",
+          "rule_id": "01952031-1a77-7f0c-9f3c-bfd27d450001",
+          "runtime_channel": "web",
+          "task_id": "emit_hit",
+          "result": "executed"
+        }
+      ]
+    }
+  })
+)]
+pub struct DecisionTraceResponseDoc {
+  pub decision: DecisionResponseDoc,
+  pub trace: RuleEngineTraceDoc,
+}
+
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct DecisionHitDoc {
   pub rule_id: String,
   pub action: String,
@@ -393,6 +450,21 @@ pub struct DecisionHitDoc {
   pub score_delta: f32,
   pub explanation: Option<String>,
   pub tags: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct RuleEngineTraceDoc {
+  pub channel: Option<String>,
+  pub steps: Vec<RuleEngineTraceStepDoc>,
+}
+
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct RuleEngineTraceStepDoc {
+  pub workflow_id: String,
+  pub rule_id: Option<String>,
+  pub runtime_channel: Option<String>,
+  pub task_id: Option<String>,
+  pub result: String,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
@@ -404,14 +476,14 @@ pub struct FieldsResponseDoc {
 #[derive(Serialize, Deserialize, ToSchema)]
 #[schema(
   example = json!({
-    "path": "payload.money.value",
-    "label": "Money Value",
+    "path": "payload.money.minor_units",
+    "label": "Money (Minor Units)",
     "type": "number",
     "allowed_operators": [">", ">=", "<", "<=", "==", "!=", "!==", "==="],
     "allowed_values": Value::Null,
-    "examples": [100, 5000],
+    "examples": [10000, 500000],
     "group": "payload.money",
-    "description": "Monto de la transaccion."
+    "description": "Monto de la transaccion en unidades menores (centavos)."
   })
 )]
 pub struct FieldMetadataDoc {
@@ -440,7 +512,8 @@ pub struct FieldMetadataDoc {
       },
       "enums": {
       "state.mode": ["staged", "active", "suspended", "deactivated"],
-      "enforcement.action": ["allow", "review", "block", "tag_only"]
+      "enforcement.action": ["allow", "review", "block", "tag_only"],
+      "scope.channels": ["web", "mobile", "api", "branch", "call_center", "pos", "atm", "backoffice", "batch", "partner"]
     },
     "jsonlogic": {
       "root_vars": ["event", "payload", "context", "features", "signals", "extensions", "transaction", "device"]

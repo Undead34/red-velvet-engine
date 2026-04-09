@@ -7,7 +7,7 @@
   [![License: BUSL-1.1](https://img.shields.io/badge/License-BUSL--1.1-blue.svg)](LICENSE)
   [![Rust](https://img.shields.io/badge/Rust-1.93+-orange)](https://www.rust-lang.org/)
 
-  [📘 **API Contract**](docs/api.md) | [🧪 **Testing Guide**](testing/README.md) | [🧭 **OpenAPI**](/api-docs/openapi.json)
+  [📘 **API Contract**](docs/api.md) | [🧪 **Testing Guide**](docs/testing/README.md) | OpenAPI: `/api-docs/openapi.json`
 </div>
 
 ---
@@ -40,10 +40,14 @@ RVE is split into two crates:
 
 This keeps `rve-core` implementation-agnostic and focused on business correctness.
 
+Events carry the source-of-truth channel in `event.header.channel`, while rules can optionally scope themselves to specific channels for cleaner governance and faster runtime routing.
+
 ## ✨ Core capabilities
 
 - ✅ Rule CRUD with lifecycle/state controls
+- ✅ Rule channel scoping with event-aware routing
 - ✅ Real-time decision endpoint
+- ✅ Decision trace endpoint for debugging
 - ✅ Metadata contract for fields and JSONLogic roots
 - ✅ Runtime status and explicit ruleset reload
 - ✅ OpenAPI docs for integration teams
@@ -53,6 +57,7 @@ This keeps `rve-core` implementation-agnostic and focused on business correctnes
 ### Prerequisites
 
 - Rust stable toolchain
+- Redis/Dragonfly instance. Configure `RVE_REDIS_URL` for the API process.
 - Docker (optional, for local cache services)
 
 ### Run
@@ -60,6 +65,9 @@ This keeps `rve-core` implementation-agnostic and focused on business correctnes
 ```bash
 # Optional local cache
 docker compose up -d dragonfly
+
+# Required: point the API to your Redis/Dragonfly backend
+export RVE_REDIS_URL=redis://127.0.0.1:6379
 
 # Start API
 cargo run -p rve -- --host 0.0.0.0 --port 3439
@@ -69,22 +77,22 @@ cargo run -p rve -- --host 0.0.0.0 --port 3439
 
 ```bash
 curl -i http://localhost:3439/health
-curl -s http://localhost:3439/status | jq
 curl -s http://localhost:3439/api/v1/rules | jq
 ```
 
 ## 🌐 API surface
 
 - `GET /health`
-- `GET /status`
 - `GET/POST /api/v1/rules`
 - `GET/PUT/PATCH/DELETE /api/v1/rules/{id}`
-- `POST /api/v1/decisions` (placeholder, returns `501`)
+- `POST /api/v1/decisions`
+- `POST /api/v1/decisions/trace`
 - `GET /api/v1/metadata/fields`
 - `GET /api/v1/metadata/contract`
-- `GET /api/v1/engine/status` (placeholder runtime status)
-- `POST /api/v1/engine/reload` (placeholder, returns `501`)
+- `GET /api/v1/engine/status`
+- `POST /api/v1/engine/reload`
 - `GET /docs`
+- `GET /api-docs`
 - `GET /api-docs/openapi.json`
 
 ## 📚 Documentation
@@ -92,7 +100,7 @@ curl -s http://localhost:3439/api/v1/rules | jq
 - API contract: [`docs/api.md`](docs/api.md)
 - Interactive docs: `http://localhost:3439/docs`
 - OpenAPI JSON: `http://localhost:3439/api-docs/openapi.json`
-- Testing strategy: [`testing/README.md`](testing/README.md)
+- Testing strategy: [`docs/testing/README.md`](docs/testing/README.md)
 
 ## 🛠️ Developer workflow
 

@@ -24,5 +24,6 @@ pub fn router() -> Router<AppState> {
     .route("/metadata/contract", get(metadata::contract))
     .route("/engine/status", get(engine::status))
     .route("/decisions", post(decisions::create_decision))
+    .route("/decisions/trace", post(decisions::create_decision_trace))
     .route("/engine/reload", post(engine::reload))
 }

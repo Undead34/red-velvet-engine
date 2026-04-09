@@ -1,10 +1,9 @@
 use axum::{Json, extract::State, http::StatusCode};
-use rve_core::{
-  ports::RuntimeEngineError,
-  services::engine::{DecisionService, DecisionServiceError},
-};
 use serde::Serialize;
-use tracing::error;
+use tracing::{error, info, instrument};
+
+use rve_core::ports::rule_engine::{RuleCompileStats, RuntimeEngineError};
+use rve_core::services::engine::{DecisionService, DecisionServiceError};
 
 use crate::http::openapi::{EngineStatusResponseDoc, ErrorResponse};
 use crate::http::state::AppState;
@@ -22,7 +21,7 @@ pub struct EngineStatusResponse {
 pub struct EngineReloadResponse {
   pub version: u64,
   pub loaded_rules: u32,
-  pub compile_stats: rve_core::ports::RuleCompileStats,
+  pub compile_stats: RuleCompileStats,
 }
 
 #[utoipa::path(
@@ -34,6 +33,7 @@ pub struct EngineReloadResponse {
     (status = 500, description = "Failed to read runtime status", body = ErrorResponse)
   )
 )]
+#[instrument(name = "http.engine.status", skip(state))]
 pub async fn status(
   State(state): State<AppState>,
 ) -> Result<Json<EngineStatusResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -52,7 +52,7 @@ pub async fn status(
     }
   };
 
-  let runtime_status = state.engine.status().map_err(|err| {
+  let runtime_status = state.rule_engine.status().map_err(|err| {
     error!(%err, operation = "status", "failed to read runtime status");
     (
       StatusCode::INTERNAL_SERVER_ERROR,
@@ -64,11 +64,8 @@ pub async fn status(
     )
   })?;
 
-  let message = if runtime_status.ready {
-    "runtime ready".to_owned()
-  } else {
-    "runtime not ready".to_owned()
-  };
+  let message =
+    if runtime_status.ready { "runtime ready".to_owned() } else { "runtime not ready".to_owned() };
 
   Ok(Json(EngineStatusResponse {
     mode: runtime_status.mode,
@@ -88,12 +85,23 @@ pub async fn status(
     (status = 500, description = "Failed to reload runtime", body = ErrorResponse)
   )
 )]
+#[instrument(name = "http.engine.reload", skip(state))]
 pub async fn reload(
   State(state): State<AppState>,
 ) -> Result<Json<EngineReloadResponse>, (StatusCode, Json<ErrorResponse>)> {
-  let snapshot = DecisionService::reload_rules(state.rule_repo.as_ref(), state.engine.as_ref())
-    .await
-    .map_err(map_engine_error)?;
+  let snapshot =
+    DecisionService::reload_rules(state.rule_repo.as_ref(), state.rule_engine.as_ref())
+      .await
+      .map_err(map_engine_error)?;
+
+  info!(
+    version = snapshot.version,
+    loaded_rules = snapshot.loaded_rules,
+    total_rules = snapshot.compile_stats.total_rules,
+    compiled_rules = snapshot.compile_stats.compiled_rules,
+    failed_rules = snapshot.compile_stats.failed_rules,
+    "runtime ruleset reloaded"
+  );
 
   Ok(Json(EngineReloadResponse {
     version: snapshot.version,

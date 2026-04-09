@@ -1,10 +1,10 @@
 use rve_core::domain::{
   DomainError,
-  common::{RuleId, Score, Severity, TimestampMs},
+  common::{Channel, RuleId, Score, Severity, TimestampMs},
   rule::{
     FunctionKind, RolloutPolicy, Rule, RuleAction, RuleAudit, RuleDecision, RuleDefinition,
     RuleEnforcement, RuleEvaluation, RuleExpression, RuleFunctionSpec, RuleIdentity, RulePolicy,
-    RuleSchedule, RuleState, mode::RuleMode,
+    RuleSchedule, RuleScope, RuleState, mode::RuleMode,
   },
 };
 use serde::{Deserialize, Serialize};
@@ -47,6 +47,9 @@ pub struct RuleDocumentInput {
   pub id: Option<RuleId>,
   #[validate(nested)]
   pub meta: RuleMetaInput,
+  #[serde(default)]
+  #[validate(nested)]
+  pub scope: RuleScopeInput,
   #[validate(nested)]
   pub state: RuleStateInput,
   #[validate(nested)]
@@ -64,6 +67,7 @@ impl RuleDocumentInput {
     self.validate().map_err(map_validation_errors)?;
 
     let identity = self.meta.into_domain();
+    let scope = self.scope.into_domain()?;
     let policy = RulePolicy::new(
       self.state.into_domain()?,
       self.schedule.into_domain()?,
@@ -77,6 +81,7 @@ impl RuleDocumentInput {
     let rule = Rule::new(
       override_id.or(self.id).unwrap_or_else(RuleId::new_v7),
       identity,
+      scope,
       policy,
       definition,
       outcome,
@@ -85,6 +90,20 @@ impl RuleDocumentInput {
 
     validate_rule(&rule)?;
     Ok(rule)
+  }
+}
+
+#[derive(Debug, Deserialize, Validate, Default)]
+#[serde(deny_unknown_fields)]
+#[validate(schema(function = "validate_scope_input"))]
+pub struct RuleScopeInput {
+  pub channels: Option<Vec<Channel>>,
+}
+
+impl RuleScopeInput {
+  fn into_domain(self) -> ApiResult<RuleScope> {
+    RuleScope::try_from(self.channels)
+      .map_err(|error| map_domain_error("scope", rve_core::domain::DomainError::RuleScope(error)))
   }
 }
 
@@ -305,6 +324,27 @@ fn validate_audit_input(audit: &RuleAuditInput) -> Result<(), ValidationError> {
   if audit.updated_at_ms.as_u64() < audit.created_at_ms.as_u64() {
     return Err(ValidationError::new("updated_at_must_be_greater_or_equal_created_at"));
   }
+  Ok(())
+}
+
+fn validate_scope_input(scope: &RuleScopeInput) -> Result<(), ValidationError> {
+  let Some(channels) = &scope.channels else {
+    return Ok(());
+  };
+
+  if channels.is_empty() {
+    return Err(ValidationError::new("channels_must_not_be_empty"));
+  }
+
+  if channels.len() > 16 {
+    return Err(ValidationError::new("channels_limit_exceeded"));
+  }
+
+  let unique = channels.iter().collect::<std::collections::HashSet<_>>();
+  if unique.len() != channels.len() {
+    return Err(ValidationError::new("channels_must_be_unique"));
+  }
+
   Ok(())
 }
 

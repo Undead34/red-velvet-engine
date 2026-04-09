@@ -1,5 +1,9 @@
-use axum::{http::HeaderMap, response::IntoResponse};
+use axum::{
+  http::{HeaderMap, HeaderValue},
+  response::IntoResponse,
+};
 use serde_json::json;
+use tracing::instrument;
 
 /// Health check
 ///
@@ -20,9 +24,10 @@ use serde_json::json;
     )
   )
 )]
+#[instrument(name = "http.health")]
 pub async fn handler() -> impl IntoResponse {
   let mut headers = HeaderMap::new();
-  headers.insert("X-Miku", "39".parse().unwrap()); // Miku says: thank you
+  headers.insert("X-Miku", HeaderValue::from_static("39")); // Miku says: thank you
 
   let body = axum::Json(json!({ "status": "ok" }));
 
