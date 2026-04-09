@@ -281,4 +281,11 @@ mod tests {
     let json = serde_json::to_string(&money).unwrap();
     assert_eq!(json, r#"{"minor_units":1050,"ccy":"USD"}"#);
   }
+
+  #[test]
+  fn parses_crypto_amount_with_known_exponent() {
+    let btc = Currency::new("BTC").unwrap();
+    let money = Money::from_major_str("0.00000001", btc).unwrap();
+    assert_eq!(money.minor_units(), 1);
+  }
 }

@@ -31,6 +31,8 @@ Use canonical fields by default:
 - `features.fin.*`
 - `signals.flags.*`
 
+`payload.money.ccy` acepta tanto códigos ISO-4217 (fiat) como los criptoactivos publicados en `/api/v1/metadata/contract` → `assets`. Para cripto seguimos enviando valores en `minor_units` (ej. satoshis para BTC, wei para ETH, etc.).
+
 Extension-derived fields are optional and only exist when provided in `payload.extensions`:
 
 - `transaction.amount` maps to `payload.extensions.transaction.amount`
@@ -207,6 +209,31 @@ Trace steps expose both:
 - `workflow_id`: internal runtime workflow identifier
 - `rule_id`: original business rule identifier
 - `runtime_channel`: normalized runtime channel (`all` for globally scoped rules)
+
+### 5.4 Payload cripto (BTC)
+
+```bash
+curl -sS -X POST http://localhost:3439/api/v1/decisions \
+  -H 'content-type: application/json' \
+  -d '{
+    "header": {
+      "timestamp": "2026-03-08T00:00:00Z",
+      "source": "exchange",
+      "channel": "api"
+    },
+    "features": { "fin": { "current_day_count": 1, "current_day_amount": 100000000 } },
+    "payload": {
+      "type": "value_transfer",
+      "money": { "minor_units": 25000000, "ccy": "BTC" },
+      "parties": {
+        "originator": { "entity_type": "individual", "acct": "btc_wallet_a", "watchlist": "unknown" },
+        "beneficiary": { "entity_type": "individual", "acct": "btc_wallet_b", "watchlist": "unknown" }
+      }
+    }
+  }'
+```
+
+El valor `25000000` corresponde a `0.25 BTC` porque BTC usa 8 decimales (minor units = satoshis). El catálogo completo de criptoactivos soportados se obtiene via `/api/v1/metadata/contract`.
 
 ## 6. Integration checklist
 

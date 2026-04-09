@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 
 use axum::Json;
-use rve_core::domain::{common::Channel, rule::JSONLOGIC_ROOT_VARS};
+use rve_core::domain::{
+  common::Channel, monetary::supported_crypto_assets, rule::JSONLOGIC_ROOT_VARS,
+};
 use serde::Serialize;
 use serde_json::{Value, json};
 
@@ -54,6 +56,7 @@ pub struct ContractResponse {
   pub rule_schema_version: &'static str,
   pub decision_payload: DecisionPayloadContract,
   pub enums: BTreeMap<String, Vec<&'static str>>,
+  pub assets: Vec<AssetMetadata>,
   pub jsonlogic: JsonLogicContract,
 }
 
@@ -68,6 +71,17 @@ pub struct DecisionPayloadContract {
 #[derive(Serialize)]
 pub struct JsonLogicContract {
   pub root_vars: Vec<&'static str>,
+}
+
+#[derive(Serialize)]
+pub struct AssetMetadata {
+  pub code: &'static str,
+  pub name: &'static str,
+  #[serde(rename = "type")]
+  pub kind: &'static str,
+  pub symbol: &'static str,
+  pub decimals: u8,
+  pub minor_unit: &'static str,
 }
 
 #[utoipa::path(
@@ -104,6 +118,17 @@ pub async fn contract() -> Json<ContractResponse> {
       deprecates_on: DECISION_PAYLOAD_LEGACY_SUNSET,
     },
     enums,
+    assets: supported_crypto_assets()
+      .iter()
+      .map(|asset| AssetMetadata {
+        code: asset.code,
+        name: asset.name,
+        kind: "crypto",
+        symbol: asset.symbol,
+        decimals: asset.exponent,
+        minor_unit: asset.minor_unit_name(),
+      })
+      .collect(),
     jsonlogic: JsonLogicContract { root_vars: JSONLOGIC_ROOT_VARS.to_vec() },
   })
 }
@@ -136,9 +161,9 @@ fn supported_fields() -> Vec<FieldMetadata> {
       kind: "string",
       allowed_operators: vec!["==", "===", "!=", "!==", "in"],
       allowed_values: None,
-      examples: vec![json!("USD"), json!("EUR")],
+      examples: vec![json!("USD"), json!("BTC")],
       group: "payload.money",
-      description: "Codigo de moneda ISO-4217.",
+      description: "Codigo de asset (ISO-4217 para fiat, catalogo interno para cripto).",
     },
     FieldMetadata {
       path: "payload.parties.originator.country",

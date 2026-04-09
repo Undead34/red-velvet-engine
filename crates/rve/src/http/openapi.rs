@@ -56,15 +56,16 @@ impl Modify for ApiInfoModifier {
       DecisionRequestDoc,
       DecisionResponseDoc,
       DecisionTraceResponseDoc,
-      DecisionHitDoc,
-      RuleEngineTraceDoc,
-      RuleEngineTraceStepDoc,
-      FieldsResponseDoc,
-      FieldMetadataDoc,
-      ContractResponseDoc,
+       DecisionHitDoc,
+       RuleEngineTraceDoc,
+       RuleEngineTraceStepDoc,
+       FieldsResponseDoc,
+       FieldMetadataDoc,
+       ContractResponseDoc,
       JsonLogicContractDoc,
-      DecisionPayloadContractDoc
-    )
+      DecisionPayloadContractDoc,
+      AssetMetadataDoc
+      )
   ),
   tags(
     (name = "health", description = "Health endpoints"),
@@ -499,6 +500,17 @@ pub struct FieldMetadataDoc {
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
+pub struct AssetMetadataDoc {
+  pub code: String,
+  pub name: String,
+  #[serde(rename = "type")]
+  pub kind: String,
+  pub symbol: String,
+  pub decimals: u8,
+  pub minor_unit: String,
+}
+
+#[derive(Serialize, Deserialize, ToSchema)]
 #[schema(
   example = json!({
     "contract_version": "0.1.0",
@@ -515,6 +527,9 @@ pub struct FieldMetadataDoc {
       "enforcement.action": ["allow", "review", "block", "tag_only"],
       "scope.channels": ["web", "mobile", "api", "branch", "call_center", "pos", "atm", "backoffice", "batch", "partner"]
     },
+    "assets": [
+      {"code": "BTC", "name": "Bitcoin", "type": "crypto", "symbol": "₿", "decimals": 8, "minor_unit": "satoshi"}
+    ],
     "jsonlogic": {
       "root_vars": ["event", "payload", "context", "features", "signals", "extensions", "transaction", "device"]
     }
@@ -526,6 +541,7 @@ pub struct ContractResponseDoc {
   pub rule_schema_version: String,
   pub decision_payload: DecisionPayloadContractDoc,
   pub enums: BTreeMap<String, Vec<String>>,
+  pub assets: Vec<AssetMetadataDoc>,
   pub jsonlogic: JsonLogicContractDoc,
 }
 
