@@ -9,15 +9,11 @@ use dataflow_rs::{
 };
 use serde_json::Value;
 
-use rve_core::domain::{event::Event, rule::Rule};
+use rve_core::domain::{event::Event, rule::{Rule, RuleExpression}};
 use rve_core::ports::rule_engine::*;
 
 const GLOBAL_WORKFLOW_CHANNEL: &str = "__rve_all__";
 const SCOPED_WORKFLOW_CHANNEL_PREFIX: &str = "__rve_channel__:";
-
-// ==========================================
-// ESTADO Y ESTRUCTURA PRINCIPAL
-// ==========================================
 
 #[derive(Default)]
 struct DataflowState {
@@ -61,6 +57,21 @@ impl DataflowRuleEngine {
     (Arc<Engine>, RuleCompileStats, HashMap<String, HashMap<String, Rule>>),
     RuntimeEngineError,
   > {
+    for rule in rules {
+      RuleExpression::new(rule.evaluation().condition.as_value().clone()).map_err(|e| {
+        RuntimeEngineError::Compilation {
+          rule_id: Some(rule.id.clone()),
+          message: e.to_string(),
+        }
+      })?;
+      RuleExpression::new(rule.evaluation().logic.as_value().clone()).map_err(|e| {
+        RuntimeEngineError::Compilation {
+          rule_id: Some(rule.id.clone()),
+          message: e.to_string(),
+        }
+      })?;
+    }
+
     let workflows = rules
       .iter()
       .map(mapper::rule_to_workflows)
@@ -87,10 +98,6 @@ impl DataflowRuleEngine {
     Ok((Arc::new(engine), compile_stats, rules_by_channel))
   }
 }
-
-// ==========================================
-// IMPLEMENTACIÓN DEL PUERTO (TRAIT)
-// ==========================================
 
 #[async_trait]
 impl RuleEnginePort for DataflowRuleEngine {
@@ -208,10 +215,6 @@ impl RuleEnginePort for DataflowRuleEngine {
   }
 }
 
-// ==========================================
-// MÓDULO DE FUNCIONES CUSTOM (DATAFLOW)
-// ==========================================
-
 mod functions {
   use super::*;
   use serde::Deserialize;
@@ -290,10 +293,6 @@ mod functions {
   }
 }
 
-// ==========================================
-// MÓDULO DE MAPEOS (DOMAIN <-> DATAFLOW)
-// ==========================================
-
 mod mapper {
   use super::*;
   use dataflow_rs::{Workflow, engine::trace::ExecutionTrace};
@@ -329,7 +328,11 @@ mod mapper {
             "device": get_ext("device"),
         },
         "metadata": { "now_ms": now_ms, "rollout_bucket": rollout_bucket },
-        "temp_data": { "rve_hits": [] }
+        "temp_data": {
+            "rve_hits": [],
+            "lists": {},
+            "cidr_networks": {}
+        }
     });
     message.invalidate_context_cache();
 
@@ -494,8 +497,8 @@ mod mapper {
         "status": workflow_status(rule.state().mode),
         "condition": {
             "and": [
-                rewrite_vars(rule.evaluation().condition.as_value()),
-                rewrite_vars(rule.evaluation().logic.as_value())
+                rewrite_expression(rule.evaluation().condition.as_value()),
+                rewrite_expression(rule.evaluation().logic.as_value())
             ]
         },
         "continue_on_error": false,
@@ -593,32 +596,117 @@ mod mapper {
     event.header.event_id.as_ref().map(|id| (id.as_uuid().as_u128() % 100) as u8).unwrap_or(0)
   }
 
-  fn rewrite_vars(value: &Value) -> Value {
+  fn rewrite_expression(value: &Value) -> Value {
     match value {
+      Value::Object(map) if map.len() == 1 => {
+        if let Some((key, nested)) = map.iter().next() {
+          let rewritten_nested = rewrite_expression(nested);
+          match key.as_str() {
+            "time_since" => time_since_transform(&rewritten_nested),
+            "is_recent" => is_recent_transform(&rewritten_nested),
+            "in_list" => in_list_transform(&rewritten_nested),
+            "not_in_list" => not_in_list_transform(&rewritten_nested),
+            "ip_in_range" => ip_in_range_transform(&rewritten_nested),
+            "var" => {
+              let mut m = serde_json::Map::new();
+              m.insert(key.clone(), rewrite_var_value(&rewritten_nested));
+              Value::Object(m)
+            }
+            _ => {
+              let mut m = serde_json::Map::new();
+              m.insert(key.clone(), rewritten_nested);
+              Value::Object(m)
+            }
+          }
+        } else {
+          value.clone()
+        }
+      }
       Value::Object(map) => {
         let mut next = serde_json::Map::with_capacity(map.len());
         for (key, nested) in map {
-          if key == "var" {
-            let rewritten = match nested {
-              Value::String(p) => Value::String(rewrite_path(p)),
-              Value::Array(items) if !items.is_empty() => {
-                let mut new_items = items.clone();
-                if let Value::String(p) = &items[0] {
-                  new_items[0] = Value::String(rewrite_path(p));
-                }
-                Value::Array(new_items)
-              }
-              _ => nested.clone(),
-            };
-            next.insert(key.clone(), rewritten);
-          } else {
-            next.insert(key.clone(), rewrite_vars(nested));
-          }
+          next.insert(key.clone(), rewrite_expression(nested));
         }
         Value::Object(next)
       }
-      Value::Array(items) => Value::Array(items.iter().map(rewrite_vars).collect()),
+      Value::Array(items) => Value::Array(items.iter().map(rewrite_expression).collect()),
       _ => value.clone(),
+    }
+  }
+
+  fn time_since_transform(nested: &Value) -> Value {
+    match nested {
+      Value::Array(args) => {
+        let mut dd_args = vec![json!({"now": []})];
+        dd_args.push(args[0].clone());
+        dd_args.push(if args.len() > 1 { args[1].clone() } else { json!("seconds") });
+        json!({"date_diff": dd_args})
+      }
+      _ => json!({"date_diff": [{"now": []}, nested.clone(), "seconds"]}),
+    }
+  }
+
+  fn is_recent_transform(nested: &Value) -> Value {
+    let (date_expr, threshold) = match nested {
+      Value::Array(args) => {
+        let date = args[0].clone();
+        let thresh = if args.len() > 1 { args[1].clone() } else { json!(3600) };
+        (date, thresh)
+      }
+      _ => (nested.clone(), json!(3600)),
+    };
+    json!({"<": [
+      {"date_diff": [{"now": []}, date_expr, "seconds"]},
+      threshold
+    ]})
+  }
+
+  fn in_list_transform(nested: &Value) -> Value {
+    if let Value::Array(args) = nested {
+      if args.len() >= 2 {
+        if let Some(list_name) = args[1].as_str() {
+          return json!({"in": [args[0].clone(), {"var": format!("temp_data.lists.{list_name}")}]});
+        }
+      }
+    }
+    json!(false)
+  }
+
+  fn not_in_list_transform(nested: &Value) -> Value {
+    if let Value::Array(args) = nested {
+      if args.len() >= 2 {
+        if let Some(list_name) = args[1].as_str() {
+          return json!({"!": [
+            {"in": [args[0].clone(), {"var": format!("temp_data.lists.{list_name}")}]}
+          ]});
+        }
+      }
+    }
+    json!(true)
+  }
+
+  fn ip_in_range_transform(nested: &Value) -> Value {
+    if let Value::Array(args) = nested {
+      if args.len() >= 2 {
+        if let Some(cidr) = args[1].as_str() {
+          return json!({"in": [args[0].clone(), {"var": format!("temp_data.cidr_networks.{cidr}")}]});
+        }
+      }
+    }
+    json!(false)
+  }
+
+  fn rewrite_var_value(nested: &Value) -> Value {
+    match nested {
+      Value::String(p) => Value::String(rewrite_path(p)),
+      Value::Array(items) if !items.is_empty() => {
+        let mut new_items = items.clone();
+        if let Value::String(p) = &items[0] {
+          new_items[0] = Value::String(rewrite_path(p));
+        }
+        Value::Array(new_items)
+      }
+      _ => nested.clone(),
     }
   }
 

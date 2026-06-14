@@ -16,69 +16,46 @@ const MAX_STRING_VAR_LEN: usize = 512;
 pub const JSONLOGIC_ROOT_VARS: [&str; 8] =
   ["event", "payload", "context", "features", "signals", "extensions", "transaction", "device"];
 
-/// Operators accepted by core static validation.
-pub const ALLOWED_OPERATORS: [&str; 61] = [
-  "var",
-  "val",
-  "==",
-  "===",
-  "!=",
-  "!==",
-  ">",
-  ">=",
-  "<",
-  "<=",
-  "!",
-  "!!",
-  "and",
-  "or",
-  "if",
-  "?:",
-  "+",
-  "-",
-  "*",
-  "/",
-  "%",
-  "max",
-  "min",
-  "cat",
-  "substr",
-  "in",
-  "merge",
-  "filter",
-  "map",
-  "reduce",
-  "all",
-  "some",
-  "none",
-  "sort",
-  "slice",
-  "missing",
-  "missing_some",
-  "try",
-  "throw",
-  "type",
-  "datetime",
-  "timestamp",
-  "parse_date",
-  "format_date",
-  "date_diff",
-  "now",
-  "abs",
-  "ceil",
-  "floor",
-  "length",
+// ── Operator groups ───────────────────────────────────────────────────────────
+// Each group documents a semantic category so the team knows exactly where to
+// add operators without reading the whole allowlist.
+
+/// Core standard operators natively supported by the logic engine.
+const OP_CORE: &[&str] = &[
+  "var", "val", "if", "?:", "missing", "missing_some", "try", "throw", "type", "exists",
+  "switch", "??",
+];
+
+/// Comparison and mathematical operators.
+const OP_MATH_CMP: &[&str] = &[
+  "==", "===", "!=", "!==", ">", ">=", "<", "<=",
+  "+", "-", "*", "/", "%", "max", "min", "abs", "ceil", "floor",
+];
+
+/// Logical operators.
+const OP_LOGIC: &[&str] = &["!", "!!", "and", "or"];
+
+/// String manipulation operators.
+const OP_STRING: &[&str] = &[
+  "cat", "substr", "starts_with", "ends_with", "upper", "lower", "trim", "split", "match",
+];
+
+/// Array and collection operators.
+const OP_ARRAY: &[&str] = &[
+  "in", "merge", "filter", "map", "reduce", "all", "some", "none", "sort", "slice", "length",
   "preserve",
-  "starts_with",
-  "ends_with",
-  "upper",
-  "lower",
-  "trim",
-  "split",
-  "exists",
-  "switch",
-  "match",
-  "??",
+];
+
+/// Temporal operators (dates, timestamps, recency checks).
+const OP_TEMPORAL: &[&str] = &[
+  "datetime", "timestamp", "parse_date", "format_date", "date_diff", "now",
+  // Recency helpers (runtime must register these functions).
+  "time_since", "is_recent",
+];
+
+/// Fraud-domain specific operators (lists, networks, etc.).
+const OP_DOMAIN: &[&str] = &[
+  "in_list", "not_in_list", "ip_in_range",
 ];
 
 /// A validated JSONLogic expression.
@@ -89,6 +66,32 @@ pub struct RuleExpression {
 }
 
 impl RuleExpression {
+  /// Returns `true` if `op` is recognised by any operator group.
+  pub fn is_allowed_operator(op: &str) -> bool {
+    OP_CORE.contains(&op)
+      || OP_MATH_CMP.contains(&op)
+      || OP_LOGIC.contains(&op)
+      || OP_STRING.contains(&op)
+      || OP_ARRAY.contains(&op)
+      || OP_TEMPORAL.contains(&op)
+      || OP_DOMAIN.contains(&op)
+  }
+
+  /// Returns all operator groups with their names and operator lists.
+  ///
+  /// Useful for UIs that need to render operator palettes grouped by category.
+  pub fn operator_groups() -> Vec<(&'static str, &'static [&'static str])> {
+    vec![
+      ("core", OP_CORE),
+      ("math_cmp", OP_MATH_CMP),
+      ("logic", OP_LOGIC),
+      ("string", OP_STRING),
+      ("array", OP_ARRAY),
+      ("temporal", OP_TEMPORAL),
+      ("domain", OP_DOMAIN),
+    ]
+  }
+
   /// Creates an expression after structural validation.
   ///
   /// # Errors
@@ -214,7 +217,7 @@ fn validate_node(value: &Value, depth: usize, nodes: &mut usize) -> DomainResult
           continue;
         }
 
-        if !ALLOWED_OPERATORS.contains(&op.as_str()) {
+        if !RuleExpression::is_allowed_operator(op.as_str()) {
           return Err(DomainError::InvalidRuleExpression(format!("unsupported operator '{op}'")));
         }
 
@@ -254,5 +257,171 @@ fn collect_var_paths<'a>(value: &'a Value, vars: &mut Vec<&'a str>) {
       }
     }
     _ => {}
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use serde_json::json;
+
+  // ── Operator coverage ──────────────────────────────────────────────────────
+
+  #[test]
+  fn is_allowed_operator_accepts_all_core() {
+    for op in OP_CORE {
+      assert!(RuleExpression::is_allowed_operator(op), "core operator '{op}' not recognised");
+    }
+  }
+
+  #[test]
+  fn is_allowed_operator_accepts_all_math_cmp() {
+    for op in OP_MATH_CMP {
+      assert!(RuleExpression::is_allowed_operator(op), "math/cmp operator '{op}' not recognised");
+    }
+  }
+
+  #[test]
+  fn is_allowed_operator_accepts_all_logic() {
+    for op in OP_LOGIC {
+      assert!(RuleExpression::is_allowed_operator(op), "logic operator '{op}' not recognised");
+    }
+  }
+
+  #[test]
+  fn is_allowed_operator_accepts_all_string() {
+    for op in OP_STRING {
+      assert!(RuleExpression::is_allowed_operator(op), "string operator '{op}' not recognised");
+    }
+  }
+
+  #[test]
+  fn is_allowed_operator_accepts_all_array() {
+    for op in OP_ARRAY {
+      assert!(RuleExpression::is_allowed_operator(op), "array operator '{op}' not recognised");
+    }
+  }
+
+  #[test]
+  fn is_allowed_operator_accepts_all_temporal() {
+    for op in OP_TEMPORAL {
+      assert!(RuleExpression::is_allowed_operator(op), "temporal operator '{op}' not recognised");
+    }
+  }
+
+  #[test]
+  fn is_allowed_operator_accepts_all_domain() {
+    for op in OP_DOMAIN {
+      assert!(RuleExpression::is_allowed_operator(op), "domain operator '{op}' not recognised");
+    }
+  }
+
+  #[test]
+  fn is_allowed_operator_rejects_legacy_operators() {
+    assert!(!RuleExpression::is_allowed_operator("="));
+    assert!(!RuleExpression::is_allowed_operator("not_in"));
+    assert!(!RuleExpression::is_allowed_operator("not"));
+  }
+
+  #[test]
+  fn is_allowed_operator_rejects_garbage() {
+    assert!(!RuleExpression::is_allowed_operator(""));
+    assert!(!RuleExpression::is_allowed_operator("  "));
+    assert!(!RuleExpression::is_allowed_operator("foo"));
+    assert!(!RuleExpression::is_allowed_operator("eval"));
+  }
+
+  // ── Expression validation ──────────────────────────────────────────────────
+
+  #[test]
+  fn valid_simple_expression() {
+    let val = json!({ "==": [1, 1] });
+    assert!(RuleExpression::new(val).is_ok());
+  }
+
+  #[test]
+  fn rejects_empty_object() {
+    let val = json!({});
+    let err = RuleExpression::new(val).unwrap_err();
+    assert!(err.to_string().contains("empty object"));
+  }
+
+  #[test]
+  fn rejects_unsupported_operator() {
+    let val = json!({ "eval": "dangerous" });
+    let err = RuleExpression::new(val).unwrap_err();
+    assert!(err.to_string().contains("unsupported operator"));
+  }
+
+  #[test]
+  fn rejects_too_many_keys() {
+    let val = json!({ "a": 1, "b": 2, "c": 3, "d": 4, "e": 5 });
+    let err = RuleExpression::new(val).unwrap_err();
+    assert!(err.to_string().contains("too many keys"));
+  }
+
+  #[test]
+  fn rejects_var_mixed_with_other_keys() {
+    let val = json!({ "var": "payload.foo", "and": true });
+    let err = RuleExpression::new(val).unwrap_err();
+    assert!(err.to_string().contains("cannot contain operator keys"));
+  }
+
+  #[test]
+  fn rejects_empty_var_path() {
+    let val = json!({ "var": "" });
+    let err = RuleExpression::new(val).unwrap_err();
+    assert!(err.to_string().contains("var path is empty"));
+  }
+
+  #[test]
+  fn rejects_too_deep_expression() {
+    let mut deep = json!(null);
+    for _ in 0..=MAX_EXPRESSION_DEPTH {
+      deep = json!({ "and": [deep] });
+    }
+    let err = RuleExpression::new(deep).unwrap_err();
+    assert!(err.to_string().contains("max depth"));
+  }
+
+  #[test]
+  fn rejects_array_too_large() {
+    let val = json!({ "and": (0..=MAX_ARRAY_LEN).map(|i| json!(i)).collect::<Vec<_>>() });
+    let err = RuleExpression::new(val).unwrap_err();
+    assert!(err.to_string().contains("array is too large"));
+  }
+
+  #[test]
+  fn rejects_disallowed_var_root() {
+    let expr = RuleExpression::new(json!({ "var": "custom.root" })).unwrap();
+    let err = expr.validate_vars().unwrap_err();
+    assert!(err.to_string().contains("disallowed var root"));
+  }
+
+  #[test]
+  fn accepts_valid_var_root() {
+    for root in &JSONLOGIC_ROOT_VARS {
+      let path = format!("{root}.something.nested");
+      let expr = RuleExpression::new(json!({ "var": path })).unwrap();
+      assert!(expr.validate_vars().is_ok(), "root '{root}' should be allowed");
+    }
+  }
+
+  // ── New domain operators ───────────────────────────────────────────────────
+
+  #[test]
+  fn accepts_new_temporal_operators() {
+    for op in &["time_since", "is_recent"] {
+      let val = json!({ *op: [{"var": "features.fin.last_seen_at"}] });
+      assert!(RuleExpression::new(val).is_ok(), "new temporal operator '{op}' rejected");
+    }
+  }
+
+  #[test]
+  fn accepts_new_domain_operators() {
+    for op in &["in_list", "not_in_list", "ip_in_range"] {
+      let val = json!({ *op: [{"var": "payload.parties.originator.email"}, "global_blacklist"] });
+      assert!(RuleExpression::new(val).is_ok(), "domain operator '{op}' rejected");
+    }
   }
 }
