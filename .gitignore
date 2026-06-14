@@ -2,3 +2,4 @@
 .zed
 private-tests/
 .env
+.opencode

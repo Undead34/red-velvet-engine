@@ -31,7 +31,6 @@ pub fn show_banner(quiet: bool) -> Option<ByeMsg> {
 
   println!();
 
-  // Subtítulo 100% dinámico
   let edition_info = format!("{} Edition", ENGINE_CODENAME);
   println!(
     "{:>48}",
