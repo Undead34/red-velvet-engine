@@ -113,19 +113,19 @@ pub(super) fn apply_patch(rule: &mut rve_core::domain::rule::Rule, patch: Value)
     }
   }
 
-  if let Some(rollout_patch) = patch.rollout {
-    if let Some(percent) = rollout_patch.percent {
-      next_policy.rollout.percent = percent;
-      changed = true;
-    }
+  if let Some(rollout_patch) = patch.rollout
+    && let Some(percent) = rollout_patch.percent
+  {
+    next_policy.rollout.percent = percent;
+    changed = true;
   }
 
-  if let Some(schedule_patch) = patch.schedule {
-    if schedule_patch.active_from_ms.is_some() || schedule_patch.active_until_ms.is_some() {
-      next_policy.schedule.active_from_ms = schedule_patch.active_from_ms;
-      next_policy.schedule.active_until_ms = schedule_patch.active_until_ms;
-      changed = true;
-    }
+  if let Some(schedule_patch) = patch.schedule
+    && (schedule_patch.active_from_ms.is_some() || schedule_patch.active_until_ms.is_some())
+  {
+    next_policy.schedule.active_from_ms = schedule_patch.active_from_ms;
+    next_policy.schedule.active_until_ms = schedule_patch.active_until_ms;
+    changed = true;
   }
 
   if !changed {

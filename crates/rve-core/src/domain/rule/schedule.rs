@@ -37,16 +37,16 @@ impl RuleSchedule {
   /// and strictly less than `active_until_ms`.
   /// Missing bounds are open (always `true` on that side).
   pub fn is_within_window(&self, now_ms: u64) -> bool {
-    if let Some(from) = self.active_from_ms {
-      if now_ms < from.as_u64() {
-        return false;
-      }
+    if let Some(from) = self.active_from_ms
+      && now_ms < from.as_u64()
+    {
+      return false;
     }
 
-    if let Some(until) = self.active_until_ms {
-      if now_ms >= until.as_u64() {
-        return false;
-      }
+    if let Some(until) = self.active_until_ms
+      && now_ms >= until.as_u64()
+    {
+      return false;
     }
 
     true

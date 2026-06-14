@@ -46,21 +46,18 @@ impl RuleMode {
   ///
   /// Self-transitions (e.g., `Active` to `Active`) are always permitted.
   pub fn can_transition_to(&self, next: Self) -> bool {
-    match (self, next) {
-      (Self::Staged, Self::Staged)
-      | (Self::Staged, Self::Active)
-      | (Self::Staged, Self::Suspended)
-      | (Self::Staged, Self::Deactivated)
-      | (Self::Active, Self::Active)
-      | (Self::Active, Self::Suspended)
-      | (Self::Active, Self::Deactivated)
-      | (Self::Suspended, Self::Staged)
-      | (Self::Suspended, Self::Active)
-      | (Self::Suspended, Self::Suspended)
-      | (Self::Suspended, Self::Deactivated)
-      | (Self::Deactivated, Self::Deactivated) => true,
-      _ => false,
-    }
+    matches!(
+      (self, next),
+      (Self::Staged, _)
+        | (Self::Active, Self::Active)
+        | (Self::Active, Self::Suspended)
+        | (Self::Active, Self::Deactivated)
+        | (Self::Suspended, Self::Staged)
+        | (Self::Suspended, Self::Active)
+        | (Self::Suspended, Self::Suspended)
+        | (Self::Suspended, Self::Deactivated)
+        | (Self::Deactivated, Self::Deactivated)
+    )
   }
 
   /// Returns `true` if the mode represents a final, irreversible state.

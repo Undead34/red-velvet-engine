@@ -9,11 +9,16 @@ use dataflow_rs::{
 };
 use serde_json::Value;
 
-use rve_core::domain::{event::Event, rule::{Rule, RuleExpression}};
+use rve_core::domain::{
+  event::Event,
+  rule::{Rule, RuleExpression},
+};
 use rve_core::ports::rule_engine::*;
 
 const GLOBAL_WORKFLOW_CHANNEL: &str = "__rve_all__";
 const SCOPED_WORKFLOW_CHANNEL_PREFIX: &str = "__rve_channel__:";
+
+type CompileResult = (Arc<Engine>, RuleCompileStats, HashMap<String, HashMap<String, Rule>>);
 
 #[derive(Default)]
 struct DataflowState {
@@ -53,22 +58,13 @@ impl DataflowRuleEngine {
   fn compile_rules(
     rules: &[Rule],
     existing_engine: Option<&Arc<Engine>>,
-  ) -> Result<
-    (Arc<Engine>, RuleCompileStats, HashMap<String, HashMap<String, Rule>>),
-    RuntimeEngineError,
-  > {
+  ) -> Result<CompileResult, RuntimeEngineError> {
     for rule in rules {
       RuleExpression::new(rule.evaluation().condition.as_value().clone()).map_err(|e| {
-        RuntimeEngineError::Compilation {
-          rule_id: Some(rule.id.clone()),
-          message: e.to_string(),
-        }
+        RuntimeEngineError::Compilation { rule_id: Some(rule.id.clone()), message: e.to_string() }
       })?;
       RuleExpression::new(rule.evaluation().logic.as_value().clone()).map_err(|e| {
-        RuntimeEngineError::Compilation {
-          rule_id: Some(rule.id.clone()),
-          message: e.to_string(),
-        }
+        RuntimeEngineError::Compilation { rule_id: Some(rule.id.clone()), message: e.to_string() }
       })?;
     }
 
@@ -662,36 +658,33 @@ mod mapper {
   }
 
   fn in_list_transform(nested: &Value) -> Value {
-    if let Value::Array(args) = nested {
-      if args.len() >= 2 {
-        if let Some(list_name) = args[1].as_str() {
-          return json!({"in": [args[0].clone(), {"var": format!("temp_data.lists.{list_name}")}]});
-        }
-      }
+    if let Value::Array(args) = nested
+      && args.len() >= 2
+      && let Some(list_name) = args[1].as_str()
+    {
+      return json!({"in": [args[0].clone(), {"var": format!("temp_data.lists.{list_name}")}]});
     }
     json!(false)
   }
 
   fn not_in_list_transform(nested: &Value) -> Value {
-    if let Value::Array(args) = nested {
-      if args.len() >= 2 {
-        if let Some(list_name) = args[1].as_str() {
-          return json!({"!": [
-            {"in": [args[0].clone(), {"var": format!("temp_data.lists.{list_name}")}]}
-          ]});
-        }
-      }
+    if let Value::Array(args) = nested
+      && args.len() >= 2
+      && let Some(list_name) = args[1].as_str()
+    {
+      return json!({"!": [
+        {"in": [args[0].clone(), {"var": format!("temp_data.lists.{list_name}")}]}
+      ]});
     }
     json!(true)
   }
 
   fn ip_in_range_transform(nested: &Value) -> Value {
-    if let Value::Array(args) = nested {
-      if args.len() >= 2 {
-        if let Some(cidr) = args[1].as_str() {
-          return json!({"in": [args[0].clone(), {"var": format!("temp_data.cidr_networks.{cidr}")}]});
-        }
-      }
+    if let Value::Array(args) = nested
+      && args.len() >= 2
+      && let Some(cidr) = args[1].as_str()
+    {
+      return json!({"in": [args[0].clone(), {"var": format!("temp_data.cidr_networks.{cidr}")}]});
     }
     json!(false)
   }
