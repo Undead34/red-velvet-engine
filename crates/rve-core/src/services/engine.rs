@@ -146,7 +146,6 @@ impl DecisionService {
   /// Returns [`DecisionServiceError::Repository`] when the repository cannot
   /// return the current rules, or [`DecisionServiceError::Runtime`] when the
   /// runtime fails to compile/publish the ruleset.
-  #[must_use]
   #[instrument(
     name = "decision_service.reload_rules",
     skip(repository, runtime),
@@ -175,7 +174,6 @@ impl DecisionService {
   ///
   /// Returns [`DecisionServiceError::Runtime`] when the runtime backend fails
   /// to evaluate the event successfully.
-  #[must_use]
   #[instrument(
     name = "decision_service.decide",
     skip(runtime, event),
@@ -204,7 +202,6 @@ impl DecisionService {
   ///
   /// Returns [`DecisionServiceError::Runtime`] when the runtime backend fails
   /// to evaluate the event successfully.
-  #[must_use]
   #[instrument(
     name = "decision_service.decide_with_trace",
     skip(runtime, event),

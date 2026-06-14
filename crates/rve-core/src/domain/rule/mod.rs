@@ -38,6 +38,7 @@ mod meta;
 pub mod mode;
 mod policy;
 mod rollout;
+#[allow(clippy::module_inception)]
 mod rule;
 mod schedule;
 mod scope;

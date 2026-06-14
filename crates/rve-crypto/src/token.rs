@@ -85,7 +85,7 @@ impl CryptoToken {
       .iter()
       .find(|meta| meta.code == self.code && meta.network == self.network)
       .copied()
-      .unwrap_or_else(|| CryptoTokenMetadata {
+      .unwrap_or(CryptoTokenMetadata {
         code: self.code,
         name: self.code,
         symbol: self.code,

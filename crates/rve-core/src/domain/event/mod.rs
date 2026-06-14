@@ -11,6 +11,7 @@
 
 pub mod context;
 mod error;
+#[allow(clippy::module_inception)]
 mod event;
 mod features;
 mod header;
