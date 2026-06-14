@@ -31,8 +31,7 @@ impl Modify for ApiInfoModifier {
     crate::http::api_v1::engine::reload,
     crate::http::api_v1::decisions::create_decision,
     crate::http::api_v1::decisions::create_decision_trace,
-    crate::http::api_v1::metadata::fields,
-    crate::http::api_v1::metadata::contract
+    crate::http::api_v1::ui::builder_config
   ),
   components(
     schemas(
@@ -60,20 +59,15 @@ impl Modify for ApiInfoModifier {
        DecisionHitDoc,
        RuleEngineTraceDoc,
        RuleEngineTraceStepDoc,
-       FieldsResponseDoc,
-       FieldMetadataDoc,
-       ContractResponseDoc,
-      JsonLogicContractDoc,
-      DecisionPayloadContractDoc,
-      AssetMetadataDoc
-      )
+       BuilderConfigResponseDoc,
+       FieldDefDoc
+       )
   ),
   tags(
     (name = "health", description = "Health endpoints"),
     (name = "rules", description = "Rules CRUD and validation"),
     (name = "engine", description = "Engine lifecycle operations"),
     (name = "decisions", description = "Decision evaluation endpoints"),
-    (name = "metadata", description = "Builder metadata and contract")
   )
 )]
 pub struct ApiDoc;
@@ -496,91 +490,23 @@ pub struct RuleEngineTraceStepDoc {
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
-pub struct FieldsResponseDoc {
-  pub data: Vec<FieldMetadataDoc>,
-  pub version: String,
-}
-
-#[derive(Serialize, Deserialize, ToSchema)]
-#[schema(
-  example = json!({
-    "path": "payload.money.minor_units",
-    "label": "Money (Minor Units)",
-    "type": "number",
-    "allowed_operators": [">", ">=", "<", "<=", "==", "!=", "!==", "==="],
-    "allowed_values": Value::Null,
-    "examples": [10000, 500000],
-    "group": "payload.money",
-    "description": "Monto de la transaccion en unidades menores (centavos)."
-  })
-)]
-pub struct FieldMetadataDoc {
-  pub path: String,
-  pub label: String,
-  #[serde(rename = "type")]
-  pub kind: String,
-  pub allowed_operators: Vec<String>,
-  pub allowed_values: Option<Vec<String>>,
-  pub examples: Vec<Value>,
-  pub group: String,
-  pub description: String,
-}
-
-#[derive(Serialize, Deserialize, ToSchema)]
-pub struct AssetMetadataDoc {
-  pub code: String,
-  pub name: String,
-  #[serde(rename = "type")]
-  pub kind: String,
-  pub symbol: String,
-  pub decimals: u8,
-  pub network: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, ToSchema)]
-#[schema(
-  example = json!({
-    "contract_version": "0.1.0",
-    "api_version": "v1",
-      "rule_schema_version": "2026-02-01",
-      "decision_payload": {
-        "canonical_version": "2026-03-16",
-        "canonical_path": "payload.money.minor_units",
-        "accepted_legacy_aliases": ["payload.money.value"],
-        "deprecates_on": "2026-07-01"
-      },
-      "enums": {
-      "state.mode": ["staged", "active", "suspended", "deactivated"],
-      "enforcement.action": ["allow", "review", "block", "tag_only"],
-      "scope.channels": ["web", "mobile", "api", "branch", "call_center", "pos", "atm", "backoffice", "batch", "partner"]
-    },
-    "assets": [
-      {"code": "BTC", "name": "Bitcoin", "type": "crypto", "symbol": "₿", "decimals": 8, "network": "bitcoin"}
-    ],
-    "jsonlogic": {
-      "root_vars": ["event", "payload", "context", "features", "signals", "extensions", "transaction", "device"]
-    }
-  })
-)]
-pub struct ContractResponseDoc {
-  pub contract_version: String,
-  pub api_version: String,
-  pub rule_schema_version: String,
-  pub decision_payload: DecisionPayloadContractDoc,
-  pub enums: BTreeMap<String, Vec<String>>,
-  pub assets: Vec<AssetMetadataDoc>,
-  pub jsonlogic: JsonLogicContractDoc,
-}
-
-#[derive(Serialize, Deserialize, ToSchema)]
-pub struct DecisionPayloadContractDoc {
-  pub canonical_version: String,
-  pub canonical_path: String,
-  pub accepted_legacy_aliases: Vec<String>,
-  pub deprecates_on: String,
-}
-
-#[derive(Serialize, Deserialize, ToSchema)]
-pub struct JsonLogicContractDoc {
+pub struct BuilderConfigResponseDoc {
+  pub operator_groups: BTreeMap<String, Vec<String>>,
   pub root_vars: Vec<String>,
+  pub enums: BTreeMap<String, Vec<String>>,
+  pub rule_fields: Vec<FieldDefDoc>,
+  pub rule_schema_version: String,
+}
+
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct FieldDefDoc {
+  pub path: String,
+  #[serde(rename = "type")]
+  pub kind: String,
+  pub required: bool,
+  pub description: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub allowed_values: Option<Vec<String>>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub items: Option<Box<FieldDefDoc>>,
 }

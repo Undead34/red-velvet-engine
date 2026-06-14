@@ -2,6 +2,7 @@ pub mod decisions;
 pub mod engine;
 pub mod errors;
 pub mod rules;
+pub mod ui;
 
 use axum::{
   Router,
@@ -20,8 +21,7 @@ pub fn router() -> Router<AppState> {
         .patch(rules::patch_rule)
         .delete(rules::delete_rule),
     )
-    .route("/metadata/fields", get(metadata::fields))
-    .route("/metadata/contract", get(metadata::contract))
+    .route("/ui/builder-config", get(ui::builder_config))
     .route("/engine/status", get(engine::status))
     .route("/decisions", post(decisions::create_decision))
     .route("/decisions/trace", post(decisions::create_decision_trace))
