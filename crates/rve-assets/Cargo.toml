@@ -12,6 +12,4 @@ keywords.workspace = true
 rve-money = { path = "../rve-money" }
 rve-crypto = { path = "../rve-crypto" }
 iso4217-catalog = { path = "../iso4217-catalog" }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { workspace = true }
 thiserror = { workspace = true }
