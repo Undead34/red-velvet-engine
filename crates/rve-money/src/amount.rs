@@ -16,7 +16,9 @@ pub enum AmountError {
 /// `Amount` is a pure mathematical abstraction of minor units.
 /// It has no concept of currency, decimals, or exponents.
 /// It safely wraps an `i128` and provides secure mathematical operations.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+  Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 pub struct Amount {
   units: i128,
 }

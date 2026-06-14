@@ -14,13 +14,11 @@ pub use entity_type::EntityType;
 pub use flag::Flag;
 pub use identifiers::{AccountId, BankRef, DeviceId, EventId, RuleId, SessionId};
 pub use rve_assets::{
-  AssetId, AssetIdError, AssetKind, AssetMetadata, FiatCurrencyError, Status, supported_fiat_codes,
-  supported_crypto_assets, CURRENCY_CODES, CurrencyCode,
+  AssetId, AssetIdError, AssetKind, AssetMetadata, CURRENCY_CODES, CurrencyCode, FiatCurrencyError,
+  Status, supported_crypto_assets, supported_fiat_codes,
 };
 pub use rve_crypto::SettlementNetwork;
-pub use rve_money::{
-  Amount, AmountError, Currency, CurrencyError, Money, MoneyError,
-};
+pub use rve_money::{Amount, AmountError, Currency, CurrencyError, Money, MoneyError};
 pub use score::{Score, ScoreError};
 pub use severity::{Severity, SeverityError};
 pub use timestamp_ms::{TimestampMs, TimestampMsError};

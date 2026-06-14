@@ -7,9 +7,7 @@ use crate::http::openapi::ErrorResponse;
 
 /// Centralized mapper for [`DecisionServiceError`] used by both
 /// `engine` and `decisions` endpoints.
-pub fn map_engine_service_error(
-  error: DecisionServiceError,
-) -> (StatusCode, Json<ErrorResponse>) {
+pub fn map_engine_service_error(error: DecisionServiceError) -> (StatusCode, Json<ErrorResponse>) {
   let (status, code) = match &error {
     DecisionServiceError::Runtime(RuntimeEngineError::Configuration { .. }) => {
       (StatusCode::SERVICE_UNAVAILABLE, "runtime_configuration")

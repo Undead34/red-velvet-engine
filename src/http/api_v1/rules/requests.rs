@@ -243,10 +243,10 @@ pub struct RuleEvaluationInput {
 
 impl RuleEvaluationInput {
   fn into_domain(self) -> ApiResult<RuleEvaluation> {
-    let condition =
-      RuleExpression::new(self.condition).map_err(|error| map_domain_error("evaluation.condition", error))?;
-    let logic =
-      RuleExpression::new(self.logic).map_err(|error| map_domain_error("evaluation.logic", error))?;
+    let condition = RuleExpression::new(self.condition)
+      .map_err(|error| map_domain_error("evaluation.condition", error))?;
+    let logic = RuleExpression::new(self.logic)
+      .map_err(|error| map_domain_error("evaluation.logic", error))?;
 
     Ok(RuleEvaluation { condition, logic })
   }
@@ -358,7 +358,11 @@ pub fn map_validation_errors(errors: ValidationErrors) -> ApiError {
   ApiError::Unprocessable(ValidationReport { errors, warnings: Vec::new() })
 }
 
-fn collect_validation_messages(prefix: &str, errors: &ValidationErrors, out: &mut Vec<ValidationIssue>) {
+fn collect_validation_messages(
+  prefix: &str,
+  errors: &ValidationErrors,
+  out: &mut Vec<ValidationIssue>,
+) {
   for (field, kind) in errors.errors() {
     let path = if prefix.is_empty() { field.to_string() } else { format!("{prefix}.{field}") };
 

@@ -22,23 +22,32 @@ pub const JSONLOGIC_ROOT_VARS: [&str; 8] =
 
 /// Core standard operators natively supported by the logic engine.
 const OP_CORE: &[&str] = &[
-  "var", "val", "if", "?:", "missing", "missing_some", "try", "throw", "type", "exists",
-  "switch", "??",
+  "var",
+  "val",
+  "if",
+  "?:",
+  "missing",
+  "missing_some",
+  "try",
+  "throw",
+  "type",
+  "exists",
+  "switch",
+  "??",
 ];
 
 /// Comparison and mathematical operators.
 const OP_MATH_CMP: &[&str] = &[
-  "==", "===", "!=", "!==", ">", ">=", "<", "<=",
-  "+", "-", "*", "/", "%", "max", "min", "abs", "ceil", "floor",
+  "==", "===", "!=", "!==", ">", ">=", "<", "<=", "+", "-", "*", "/", "%", "max", "min", "abs",
+  "ceil", "floor",
 ];
 
 /// Logical operators.
 const OP_LOGIC: &[&str] = &["!", "!!", "and", "or"];
 
 /// String manipulation operators.
-const OP_STRING: &[&str] = &[
-  "cat", "substr", "starts_with", "ends_with", "upper", "lower", "trim", "split", "match",
-];
+const OP_STRING: &[&str] =
+  &["cat", "substr", "starts_with", "ends_with", "upper", "lower", "trim", "split", "match"];
 
 /// Array and collection operators.
 const OP_ARRAY: &[&str] = &[
@@ -48,15 +57,19 @@ const OP_ARRAY: &[&str] = &[
 
 /// Temporal operators (dates, timestamps, recency checks).
 const OP_TEMPORAL: &[&str] = &[
-  "datetime", "timestamp", "parse_date", "format_date", "date_diff", "now",
+  "datetime",
+  "timestamp",
+  "parse_date",
+  "format_date",
+  "date_diff",
+  "now",
   // Recency helpers (runtime must register these functions).
-  "time_since", "is_recent",
+  "time_since",
+  "is_recent",
 ];
 
 /// Fraud-domain specific operators (lists, networks, etc.).
-const OP_DOMAIN: &[&str] = &[
-  "in_list", "not_in_list", "ip_in_range",
-];
+const OP_DOMAIN: &[&str] = &["in_list", "not_in_list", "ip_in_range"];
 
 /// A validated JSONLogic expression.
 #[derive(Clone, Debug, Serialize, Deserialize)]

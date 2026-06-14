@@ -5,7 +5,10 @@ use axum::{
 };
 use tracing::instrument;
 
-use crate::http::{openapi::{ErrorResponse, RuleDoc, RuleListResponseDoc}, state::AppState};
+use crate::http::{
+  openapi::{ErrorResponse, RuleDoc, RuleListResponseDoc},
+  state::AppState,
+};
 
 use super::{
   errors::{ApiError, ApiResult, map_repository_error, parse_rule_id},

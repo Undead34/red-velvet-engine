@@ -98,9 +98,7 @@ pub async fn run_decision(
       .await
       .map(DecisionEnvelope::Trace)
   } else {
-    DecisionService::decide(state.rule_engine.as_ref(), event)
-      .await
-      .map(DecisionEnvelope::Decision)
+    DecisionService::decide(state.rule_engine.as_ref(), event).await.map(DecisionEnvelope::Decision)
   }
 }
 

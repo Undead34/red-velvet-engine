@@ -8,7 +8,11 @@ use serde_json::Value;
 use super::errors::{ApiError, ApiResult, ValidationIssue};
 
 pub fn validate_rule(rule: &Rule) -> ApiResult<()> {
-  rule.policy().state().validate().map_err(|error| ApiError::validation("state", error.to_string()))?;
+  rule
+    .policy()
+    .state()
+    .validate()
+    .map_err(|error| ApiError::validation("state", error.to_string()))?;
   rule
     .policy()
     .schedule()
