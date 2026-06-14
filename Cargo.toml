@@ -54,6 +54,7 @@ utoipa = { version = "5.4.0", features = ["axum_extras", "chrono", "uuid"] }
 tower-http = { version = "0.5.2", features = ["cors", "request-id", "trace"] }
 shadow-rs = "1.7.1"
 dotenvy = "0.15"
+sha2 = "0.10"
 
 [build-dependencies]
 shadow-rs = "1.7.1"

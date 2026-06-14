@@ -1,8 +1,17 @@
-pub mod errors;
-pub mod handlers;
-mod logic_validation;
-mod patch;
-mod types;
+mod errors;
+mod requests;
+mod responses;
+mod validation;
 mod versioning;
 
-pub use handlers::{create_rule, delete_rule, get_rule, list_rules, patch_rule, update_rule};
+pub mod delete;
+pub mod get;
+pub mod patch;
+pub mod post;
+pub mod put;
+
+pub use delete::delete_rule;
+pub use get::{get_rule, list_rules};
+pub use patch::patch_rule;
+pub use post::create_rule;
+pub use put::update_rule;

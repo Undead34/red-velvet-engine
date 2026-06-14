@@ -1,7 +1,6 @@
-use std::{collections::hash_map::DefaultHasher, hash::Hasher};
-
 use axum::http::{HeaderMap, HeaderValue, header};
 use rve_core::domain::rule::Rule;
+use sha2::{Digest, Sha256};
 
 use super::errors::{ApiError, ApiResult};
 
@@ -10,9 +9,8 @@ pub const RULE_VERSION_HEADER: &str = "x-rule-version";
 pub(super) fn rule_version(rule: &Rule) -> ApiResult<String> {
   let bytes = serde_json::to_vec(rule)
     .map_err(|_| ApiError::Internal("failed to serialize rule version".to_owned()))?;
-  let mut hasher = DefaultHasher::new();
-  hasher.write(&bytes);
-  Ok(format!("{:016x}", hasher.finish()))
+  let hash = Sha256::digest(&bytes);
+  Ok(format!("{:064x}", hash))
 }
 
 pub(super) fn response_version_headers(version: &str) -> ApiResult<HeaderMap> {

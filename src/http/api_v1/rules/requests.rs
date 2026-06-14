@@ -1,44 +1,74 @@
 use rve_core::domain::{
   DomainError,
-  common::{Channel, RuleId, Score, Severity, TimestampMs},
+  common::{Channel, RuleId, TimestampMs},
   rule::{
-    FunctionKind, RolloutPolicy, Rule, RuleAction, RuleAudit, RuleDecision, RuleDefinition,
+    FunctionKind, RolloutPolicy, RuleAction, RuleAudit, RuleDecision, RuleDefinition,
     RuleEnforcement, RuleEvaluation, RuleExpression, RuleFunctionSpec, RuleIdentity, RulePolicy,
     RuleSchedule, RuleScope, RuleState, mode::RuleMode,
   },
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::Value;
 use utoipa::IntoParams;
 use validator::{Validate, ValidationError, ValidationErrors, ValidationErrorsKind};
 
 use super::errors::{ApiError, ApiResult, ValidationIssue, ValidationReport};
-use super::logic_validation::validate_rule_evaluation;
+
+// ── Pagination ────────────────────────────────────────────────────────────────
 
 #[derive(Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 pub struct Pagination {
-  /// Page number (1-based).
   #[param(default = 1, minimum = 1)]
   pub page: Option<u32>,
-
-  /// Number of items per page. Max 100.
   #[param(default = 20, minimum = 1, maximum = 100)]
   pub limit: Option<u32>,
 }
 
-#[derive(Serialize)]
-pub struct RuleListResponse {
-  pub data: Vec<Rule>,
-  pub pagination: PaginationMeta,
+// ── PATCH DTOs ────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize, Validate)]
+#[serde(deny_unknown_fields)]
+pub struct RulePatchInput {
+  #[validate(nested)]
+  pub state: Option<RuleStatePatch>,
+  #[validate(nested)]
+  pub rollout: Option<RolloutPolicyPatch>,
+  #[validate(nested)]
+  pub schedule: Option<RuleSchedulePatch>,
 }
 
-#[derive(Serialize)]
-pub struct PaginationMeta {
-  pub page: u32,
-  pub limit: u32,
-  pub total: u32,
+#[derive(Debug, Deserialize, Validate)]
+#[serde(deny_unknown_fields)]
+pub struct RuleStatePatch {
+  pub mode: Option<RuleMode>,
+  #[validate(nested)]
+  pub audit: Option<RuleAuditPatch>,
 }
+
+#[derive(Debug, Deserialize, Validate)]
+#[serde(deny_unknown_fields)]
+pub struct RuleAuditPatch {
+  pub updated_at_ms: Option<TimestampMs>,
+  #[validate(length(min = 1, max = 120))]
+  pub updated_by: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Validate)]
+#[serde(deny_unknown_fields)]
+pub struct RolloutPolicyPatch {
+  #[validate(range(max = 100))]
+  pub percent: Option<u8>,
+}
+
+#[derive(Debug, Deserialize, Validate)]
+#[serde(deny_unknown_fields)]
+pub struct RuleSchedulePatch {
+  pub active_from_ms: Option<TimestampMs>,
+  pub active_until_ms: Option<TimestampMs>,
+}
+
+// ── Create / Replace DTOs (moved from types.rs) ──────────────────────────────
 
 #[derive(Debug, Deserialize, Validate)]
 #[serde(deny_unknown_fields)]
@@ -63,7 +93,7 @@ pub struct RuleDocumentInput {
 }
 
 impl RuleDocumentInput {
-  pub(super) fn into_rule(self, override_id: Option<RuleId>) -> ApiResult<Rule> {
+  pub fn into_rule(self, override_id: Option<RuleId>) -> ApiResult<rve_core::domain::rule::Rule> {
     self.validate().map_err(map_validation_errors)?;
 
     let identity = self.meta.into_domain();
@@ -78,7 +108,7 @@ impl RuleDocumentInput {
       .map_err(|error| map_domain_error("definition", error))?;
     let outcome = RuleDecision::new(self.enforcement.into_domain()?);
 
-    let rule = Rule::new(
+    let rule = rve_core::domain::rule::Rule::new(
       override_id.or(self.id).unwrap_or_else(RuleId::new_v7),
       identity,
       scope,
@@ -88,10 +118,12 @@ impl RuleDocumentInput {
     )
     .map_err(|error| map_domain_error("rule", error))?;
 
-    validate_rule(&rule)?;
+    super::validation::validate_rule(&rule)?;
     Ok(rule)
   }
 }
+
+// ── Sub-input types ──────────────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize, Validate, Default)]
 #[serde(deny_unknown_fields)]
@@ -211,10 +243,10 @@ pub struct RuleEvaluationInput {
 
 impl RuleEvaluationInput {
   fn into_domain(self) -> ApiResult<RuleEvaluation> {
-    let condition = RuleExpression::new(self.condition)
-      .map_err(|error| map_domain_error("evaluation.condition", error))?;
-    let logic = RuleExpression::new(self.logic)
-      .map_err(|error| map_domain_error("evaluation.logic", error))?;
+    let condition =
+      RuleExpression::new(self.condition).map_err(|error| map_domain_error("evaluation.condition", error))?;
+    let logic =
+      RuleExpression::new(self.logic).map_err(|error| map_domain_error("evaluation.logic", error))?;
 
     Ok(RuleEvaluation { condition, logic })
   }
@@ -239,7 +271,7 @@ pub struct RuleEnforcementInput {
   #[validate(range(min = 1.0, max = 10.0))]
   pub score_impact: f32,
   pub action: RuleAction,
-  pub severity: Severity,
+  pub severity: rve_core::domain::common::Severity,
   #[validate(length(min = 1, max = 64))]
   pub tags: Vec<String>,
   #[validate(range(min = 1, max = 86_400_000))]
@@ -250,7 +282,7 @@ pub struct RuleEnforcementInput {
 
 impl RuleEnforcementInput {
   fn into_domain(self) -> ApiResult<RuleEnforcement> {
-    let score_impact = Score::new(self.score_impact).map_err(|_| {
+    let score_impact = rve_core::domain::common::Score::new(self.score_impact).map_err(|_| {
       ApiError::validation("enforcement.score_impact", "must be between 1.0 and 10.0")
     })?;
     let mut functions = Vec::with_capacity(self.functions.len());
@@ -271,45 +303,7 @@ impl RuleEnforcementInput {
   }
 }
 
-pub(super) fn validate_rule(rule: &Rule) -> ApiResult<()> {
-  rule.policy().state().validate().map_err(|error| map_domain_error("state", error.into()))?;
-  rule
-    .policy()
-    .schedule()
-    .validate()
-    .map_err(|error| map_domain_error("schedule", error.into()))?;
-  rule.policy().rollout().validate().map_err(|error| map_domain_error("rollout", error.into()))?;
-  validate_rule_evaluation(rule.evaluation())?;
-  Ok(())
-}
-
-pub(super) fn collect_rule_warnings(rule: &Rule) -> Vec<ValidationIssue> {
-  let mut warnings = Vec::new();
-
-  if matches!(rule.evaluation().condition.as_value(), Value::Bool(true)) {
-    warnings.push(ValidationIssue {
-      path: "evaluation.condition".to_owned(),
-      message: "condition is always true; rule always evaluates logic".to_owned(),
-    });
-  }
-
-  if rule.enforcement().tags.is_empty() {
-    warnings.push(ValidationIssue {
-      path: "enforcement.tags".to_owned(),
-      message: "empty tags reduce observability in dashboards".to_owned(),
-    });
-  }
-
-  warnings
-}
-
-pub(super) fn parse_patch_value<T>(field: &str, value: &Value) -> ApiResult<T>
-where
-  T: serde::de::DeserializeOwned,
-{
-  serde_json::from_value(value.clone())
-    .map_err(|_| ApiError::validation(field, "invalid type or value"))
-}
+// ── Validation helpers ───────────────────────────────────────────────────────
 
 fn validate_schedule_input(schedule: &RuleScheduleInput) -> Result<(), ValidationError> {
   if let (Some(from), Some(until)) = (schedule.active_from_ms, schedule.active_until_ms)
@@ -348,7 +342,7 @@ fn validate_scope_input(scope: &RuleScopeInput) -> Result<(), ValidationError> {
   Ok(())
 }
 
-fn map_validation_errors(errors: ValidationErrors) -> ApiError {
+pub fn map_validation_errors(errors: ValidationErrors) -> ApiError {
   let mut issues = Vec::new();
   collect_validation_messages("", &errors, &mut issues);
 
@@ -364,11 +358,7 @@ fn map_validation_errors(errors: ValidationErrors) -> ApiError {
   ApiError::Unprocessable(ValidationReport { errors, warnings: Vec::new() })
 }
 
-fn collect_validation_messages(
-  prefix: &str,
-  errors: &ValidationErrors,
-  out: &mut Vec<ValidationIssue>,
-) {
+fn collect_validation_messages(prefix: &str, errors: &ValidationErrors, out: &mut Vec<ValidationIssue>) {
   for (field, kind) in errors.errors() {
     let path = if prefix.is_empty() { field.to_string() } else { format!("{prefix}.{field}") };
 

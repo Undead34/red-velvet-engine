@@ -1,6 +1,6 @@
 pub mod decisions;
 pub mod engine;
-pub mod metadata;
+pub mod errors;
 pub mod rules;
 
 use axum::{
