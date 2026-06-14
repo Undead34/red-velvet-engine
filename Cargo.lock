@@ -1166,19 +1166,53 @@ dependencies = [
 ]
 
 [[package]]
+name = "rve-assets"
+version = "0.1.0"
+dependencies = [
+ "iso4217-catalog",
+ "rve-crypto",
+ "rve-money",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "rve-core"
 version = "0.1.0"
 dependencies = [
  "async-trait",
  "chrono",
  "chrono-tz",
- "iso4217-catalog",
+ "rve-assets",
+ "rve-crypto",
+ "rve-money",
  "semver",
  "serde",
  "serde_json",
  "thiserror",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "rve-crypto"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "rve-money"
+version = "0.1.0"
+dependencies = [
+ "iso4217-catalog",
+ "rve-crypto",
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]

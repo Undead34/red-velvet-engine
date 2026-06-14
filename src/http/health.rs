@@ -2,8 +2,11 @@ use axum::{
   http::{HeaderMap, HeaderValue},
   response::IntoResponse,
 };
-use serde_json::json;
 use tracing::instrument;
+
+use crate::http::openapi::{HealthResponse, HealthVersionResponse};
+use crate::version::version_metadata;
+use rve_core::ENGINE_NAME;
 
 /// Health check
 ///
@@ -29,7 +32,19 @@ pub async fn handler() -> impl IntoResponse {
   let mut headers = HeaderMap::new();
   headers.insert("X-Miku", HeaderValue::from_static("39")); // Miku says: thank you
 
-  let body = axum::Json(json!({ "status": "ok" }));
+  let version = version_metadata();
+  let body = axum::Json(HealthResponse {
+    status: "healthy".to_owned(),
+    engine: ENGINE_NAME.to_owned(),
+    version: HealthVersionResponse {
+      semver: version.semver().to_owned(),
+      release: version.calver().to_owned(),
+      commit: version.commit().to_owned(),
+      branch: version.branch().to_owned(),
+      build: version.build_timestamp().to_owned(),
+      dirty: version.is_dirty(),
+    },
+  });
 
   (headers, body)
 }

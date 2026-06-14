@@ -29,7 +29,6 @@
 pub mod common;
 pub mod error;
 pub mod event;
-pub mod monetary;
 pub mod prelude;
 pub mod rule;
 

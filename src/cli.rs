@@ -1,5 +1,7 @@
-use clap::{ArgAction, Parser, Subcommand};
+use clap::{ArgAction, CommandFactory, FromArgMatches, Parser, Subcommand};
 use rve_core::{ENGINE_EDITION, PKG_DESCRIPTION};
+
+use crate::version::version_metadata;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -42,6 +44,11 @@ pub enum AboutCommand {
 
 impl App {
   pub fn new() -> Self {
-    App::parse()
+    let version = version_metadata();
+    let short_version: &'static str = Box::leak(version.cli_short().into_boxed_str());
+    let long_version: &'static str = Box::leak(version.cli_long().into_boxed_str());
+    let matches = App::command().version(short_version).long_version(long_version).get_matches();
+
+    App::from_arg_matches(&matches).unwrap_or_else(|err: clap::Error| err.exit())
   }
 }

@@ -37,6 +37,7 @@ impl Modify for ApiInfoModifier {
   components(
     schemas(
       HealthResponse,
+      HealthVersionResponse,
       ErrorResponse,
       ValidationReport,
       ValidationIssue,
@@ -82,8 +83,34 @@ pub async fn openapi_json() -> Json<utoipa::openapi::OpenApi> {
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
+#[schema(
+  example = json!({
+    "status": "healthy",
+    "engine": "Red Velvet Engine",
+    "version": {
+      "semver": "0.4.2",
+      "release": "26.04.12",
+      "commit": "c0ffee0",
+      "branch": "main",
+      "build": "2026-04-12T09:18:36Z",
+      "dirty": false
+    }
+  })
+)]
 pub struct HealthResponse {
   pub status: String,
+  pub engine: String,
+  pub version: HealthVersionResponse,
+}
+
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct HealthVersionResponse {
+  pub semver: String,
+  pub release: String,
+  pub commit: String,
+  pub branch: String,
+  pub build: String,
+  pub dirty: bool,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
@@ -507,7 +534,7 @@ pub struct AssetMetadataDoc {
   pub kind: String,
   pub symbol: String,
   pub decimals: u8,
-  pub minor_unit: String,
+  pub network: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
@@ -528,7 +555,7 @@ pub struct AssetMetadataDoc {
       "scope.channels": ["web", "mobile", "api", "branch", "call_center", "pos", "atm", "backoffice", "batch", "partner"]
     },
     "assets": [
-      {"code": "BTC", "name": "Bitcoin", "type": "crypto", "symbol": "₿", "decimals": 8, "minor_unit": "satoshi"}
+      {"code": "BTC", "name": "Bitcoin", "type": "crypto", "symbol": "₿", "decimals": 8, "network": "bitcoin"}
     ],
     "jsonlogic": {
       "root_vars": ["event", "payload", "context", "features", "signals", "extensions", "transaction", "device"]

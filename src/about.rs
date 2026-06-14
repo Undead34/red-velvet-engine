@@ -1,10 +1,12 @@
 use colored::Colorize;
 use rve_core::{ENGINE_CODENAME, ENGINE_EDITION, ENGINE_EMOJI, ENGINE_NAME, PKG_DESCRIPTION};
 
+use crate::version::version_metadata;
+
 // Genera todas las constantes build::* en tiempo de compilación
 shadow_rs::shadow!(build);
 
-const THIRD_PARTY_LICENSES: &str = include_str!("../../../THIRD_PARTY_LICENSES.md");
+const THIRD_PARTY_LICENSES: &str = include_str!("../THIRD_PARTY_LICENSES.md");
 
 /// Punto de entrada para mostrar la información del proyecto.
 pub fn show_project_about(quiet: bool) {
@@ -17,6 +19,7 @@ pub fn show_project_about(quiet: bool) {
 
 /// Imprime los metadatos del proyecto en formato texto plano (ideal para logs o scripts).
 fn print_quiet_metadata() {
+  let version = version_metadata();
   let separator = "-".repeat(72);
 
   // Variables de entorno de Cargo y banderas de compilación locales
@@ -31,11 +34,13 @@ fn print_quiet_metadata() {
   println!("Project     : {}", ENGINE_NAME);
   println!("Codename    : {}", ENGINE_CODENAME);
 
-  if !build::GIT_CLEAN {
-    println!("Version     : {} (DIRTY)", build::PKG_VERSION);
+  if version.is_dirty() {
+    println!("Version     : {} (DIRTY)", version.semver());
   } else {
-    println!("Version     : {}", build::PKG_VERSION);
+    println!("Version     : {}", version.semver());
   }
+
+  println!("Release     : {}", version.calver());
 
   println!("Package     : {}", build::PROJECT_NAME);
   println!("Description : {}", PKG_DESCRIPTION);
@@ -68,8 +73,10 @@ fn print_colored_metadata() {
   println!("{} {}", "Project    ".bright_black(), ENGINE_NAME.bold());
   println!("{} {}", "Codename   ".bright_black(), ENGINE_CODENAME.bright_red());
 
-  let dirty_status = if !build::GIT_CLEAN { " (DIRTY)".red() } else { "".normal() };
-  println!("{} {}{}", "Version    ".bright_black(), build::PKG_VERSION.bold(), dirty_status);
+  let version = version_metadata();
+  let dirty_status = if version.is_dirty() { " (DIRTY)".red() } else { "".normal() };
+  println!("{} {}{}", "Version    ".bright_black(), version.semver().bold(), dirty_status);
+  println!("{} {}", "Release    ".bright_black(), version.calver().bright_red().bold());
 
   println!("{} {}", "Package    ".bright_black(), build::PROJECT_NAME.cyan());
   println!("{} {}", "Description".bright_black(), PKG_DESCRIPTION.italic());

@@ -9,7 +9,7 @@ description.workspace = true
 keywords.workspace = true
 
 [dependencies]
-rve = { path = "../rve" }
+rve = { path = "../.." }
 rve-core = { path = "../rve-core" }
 serde_json = { workspace = true }
 semver = { version = "1.0.27", features = ["serde"] }

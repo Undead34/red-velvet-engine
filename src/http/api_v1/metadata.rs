@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 
 use axum::Json;
 use rve_core::domain::{
-  common::Channel, monetary::supported_crypto_assets, rule::JSONLOGIC_ROOT_VARS,
+  common::{Channel, supported_crypto_assets, supported_fiat_codes},
+  rule::JSONLOGIC_ROOT_VARS,
 };
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -75,13 +76,13 @@ pub struct JsonLogicContract {
 
 #[derive(Serialize)]
 pub struct AssetMetadata {
-  pub code: &'static str,
-  pub name: &'static str,
+  pub code: String,
+  pub name: String,
   #[serde(rename = "type")]
-  pub kind: &'static str,
-  pub symbol: &'static str,
+  pub kind: String,
+  pub symbol: String,
   pub decimals: u8,
-  pub minor_unit: &'static str,
+  pub network: Option<String>,
 }
 
 #[utoipa::path(
@@ -107,6 +108,35 @@ pub async fn contract() -> Json<ContractResponse> {
   enums.insert("scope.channels".to_owned(), Channel::known_values().to_vec());
   enums.insert("signals.flags.*".to_owned(), vec!["unknown", "no", "yes"]);
 
+  let mut assets = Vec::new();
+  for code in supported_fiat_codes() {
+    let meta = code.meta();
+    let decimals = meta.minor_units.unwrap_or(0);
+    assets.push(AssetMetadata {
+      code: meta.alpha.to_owned(),
+      name: meta.name.to_owned(),
+      kind: "fiat".to_owned(),
+      symbol: meta.alpha.to_owned(),
+      decimals,
+      network: None,
+    });
+  }
+
+  for asset in supported_crypto_assets() {
+    let canonical = match asset.network {
+      Some(network) => format!("{}@{}", asset.code, network),
+      None => asset.code.to_owned(),
+    };
+    assets.push(AssetMetadata {
+      code: canonical,
+      name: asset.name.to_owned(),
+      kind: "crypto".to_owned(),
+      symbol: asset.symbol.to_owned(),
+      decimals: asset.exponent,
+      network: asset.network.map(|net| net.to_string()),
+    });
+  }
+
   Json(ContractResponse {
     contract_version: PKG_VERSION,
     api_version: API_VERSION,
@@ -118,17 +148,7 @@ pub async fn contract() -> Json<ContractResponse> {
       deprecates_on: DECISION_PAYLOAD_LEGACY_SUNSET,
     },
     enums,
-    assets: supported_crypto_assets()
-      .iter()
-      .map(|asset| AssetMetadata {
-        code: asset.code,
-        name: asset.name,
-        kind: "crypto",
-        symbol: asset.symbol,
-        decimals: asset.exponent,
-        minor_unit: asset.minor_unit_name(),
-      })
-      .collect(),
+    assets,
     jsonlogic: JsonLogicContract { root_vars: JSONLOGIC_ROOT_VARS.to_vec() },
   })
 }

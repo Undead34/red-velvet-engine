@@ -11,7 +11,9 @@ keywords.workspace = true
 async-trait = { workspace = true }
 chrono = { version = "0.4.43", features = ["serde"] }
 chrono-tz = "0.10.4"
-iso4217-catalog = { path = "../iso4217-catalog" }
+rve-money = { path = "../rve-money" }
+rve-assets = { path = "../rve-assets" }
+rve-crypto = { path = "../rve-crypto" }
 semver = { version = "1.0.27", features = ["serde"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = { workspace = true }

@@ -45,6 +45,8 @@ pub async fn create_decision(
   State(state): State<AppState>,
   Json(request): Json<Value>,
 ) -> Result<(HeaderMap, Json<Decision>), (StatusCode, Json<ErrorResponse>)> {
+  println!("{}", request);
+
   let (headers, decision) = evaluate_request(&state, request, false).await?;
   Ok((
     headers,
@@ -257,7 +259,7 @@ fn normalize_legacy_money_payload(
     _ => return Ok((request, false)),
   };
 
-  let currency = Currency::new(ccy).map_err(DecisionPayloadError::from)?;
+  let currency = Currency::new(ccy).map_err(|error| DecisionPayloadError::Domain(error.into()))?;
   let amount = Money::from_major_str(&amount_text, currency)
     .map_err(|err| DecisionPayloadError::Invalid(format!("invalid event payload: {err}")))?;
 

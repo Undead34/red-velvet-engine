@@ -3,6 +3,7 @@ use crate::domain::event::{EventError, EventFeaturesError, EventGeoError, EventP
 use crate::domain::rule::{
   RulePolicyError, RuleRolloutError, RuleScheduleError, RuleScopeError, RuleStateError,
 };
+use rve_money::{AssetIdError, FiatCurrencyError};
 use thiserror::Error;
 
 /// Result alias used by domain constructors and invariants.
@@ -118,5 +119,15 @@ impl From<EventPartyError> for DomainError {
 impl From<EventFeaturesError> for DomainError {
   fn from(error: EventFeaturesError) -> Self {
     Self::Event(EventError::Features(error))
+  }
+}
+
+impl From<AssetIdError> for DomainError {
+  fn from(error: AssetIdError) -> Self {
+    match error {
+      AssetIdError::Fiat(FiatCurrencyError(code)) => Self::InvalidCurrencyCode(code),
+      AssetIdError::UnknownCrypto { code } => Self::InvalidCurrencyCode(code),
+      AssetIdError::UnknownNetwork { code } => Self::InvalidCurrencyCode(code),
+    }
   }
 }

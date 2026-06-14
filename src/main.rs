@@ -21,6 +21,7 @@ async fn main() -> ExitCode {
 }
 
 async fn run() -> Result<(), AppError> {
+  #[cfg(debug_assertions)]
   let _ = dotenvy::dotenv();
 
   let app = App::new();
@@ -34,7 +35,7 @@ async fn run() -> Result<(), AppError> {
     return Ok(());
   }
 
-  let _bye = banner::show_banner(app.quiet);
+  let _bye_guard = banner::show_banner(app.quiet);
   logger::setup_logging(app.verbose, app.quiet);
 
   let _startup = info_span!("startup").entered();

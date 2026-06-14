@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
-members = ["crates/*"]
-default-members = ["crates/rve"]
+members = [".", "crates/*"]
+default-members = ["."]
 
 [workspace.package]
 authors = ["Gabriel Maizo <maizogabriel@gmail.com>"]
@@ -17,3 +17,43 @@ serde_json = "1.0.149"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 thiserror = "2.0.18"
+
+[package]
+name = "rve"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description.workspace = true
+build = "build.rs"
+
+[dependencies]
+rve-core = { version = "0.1.0", path = "crates/rve-core" }
+async-trait = { workspace = true }
+serde_json = { workspace = true }
+tracing-subscriber = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+dataflow-rs = "2.1"
+datalogic-rs = "4"
+
+anyhow = "1.0"
+tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread", "signal"] }
+clap = { version = "4.5.54", features = ["derive"] }
+colored = "3.1.1"
+indoc = "2.0.7"
+redis = { version = "1.0.3", features = ["tokio-comp"] }
+validator = { version = "0.20.0", features = ["derive"] }
+serde = { version = "1.0.228", features = ["derive"] }
+semver = { version = "1.0.27", features = ["serde"] }
+chrono = "0.4.43"
+axum = "0.8.8"
+utoipa = { version = "5.4.0", features = ["axum_extras", "chrono", "uuid"] }
+tower-http = { version = "0.5.2", features = ["cors", "request-id", "trace"] }
+shadow-rs = "1.7.1"
+dotenvy = "0.15"
+
+[build-dependencies]
+shadow-rs = "1.7.1"
