@@ -2,11 +2,13 @@ use axum::{Json, extract::State, http::StatusCode};
 use serde::Serialize;
 use tracing::{error, info, instrument};
 
-use rve_core::ports::rule_engine::{RuleCompileStats, RuntimeEngineError};
-use rve_core::services::engine::{DecisionService, DecisionServiceError};
+use rve_core::ports::rule_engine::RuleCompileStats;
+use rve_core::services::engine::DecisionService;
 
 use crate::http::openapi::{EngineStatusResponseDoc, ErrorResponse};
 use crate::http::state::AppState;
+
+use super::errors::map_engine_service_error;
 
 #[derive(Serialize)]
 pub struct EngineStatusResponse {
@@ -92,7 +94,7 @@ pub async fn reload(
   let snapshot =
     DecisionService::reload_rules(state.rule_repo.as_ref(), state.rule_engine.as_ref())
       .await
-      .map_err(map_engine_error)?;
+      .map_err(map_engine_service_error)?;
 
   info!(
     version = snapshot.version,
@@ -108,30 +110,4 @@ pub async fn reload(
     loaded_rules: snapshot.loaded_rules,
     compile_stats: snapshot.compile_stats,
   }))
-}
-
-fn map_engine_error(error: DecisionServiceError) -> (StatusCode, Json<ErrorResponse>) {
-  let (status, code) = match &error {
-    DecisionServiceError::Runtime(RuntimeEngineError::Configuration { .. }) => {
-      (StatusCode::SERVICE_UNAVAILABLE, "runtime_configuration")
-    }
-    DecisionServiceError::Runtime(RuntimeEngineError::Compilation { .. }) => {
-      (StatusCode::INTERNAL_SERVER_ERROR, "runtime_compilation")
-    }
-    DecisionServiceError::Runtime(RuntimeEngineError::Evaluation { .. }) => {
-      (StatusCode::INTERNAL_SERVER_ERROR, "runtime_evaluation")
-    }
-    DecisionServiceError::Runtime(RuntimeEngineError::NotImplemented { .. }) => {
-      (StatusCode::NOT_IMPLEMENTED, "not_implemented")
-    }
-    DecisionServiceError::Runtime(RuntimeEngineError::Internal { .. }) => {
-      (StatusCode::INTERNAL_SERVER_ERROR, "runtime_internal")
-    }
-    DecisionServiceError::Repository(_) => (StatusCode::INTERNAL_SERVER_ERROR, "repository_error"),
-  };
-
-  (
-    status,
-    Json(ErrorResponse { code: code.to_owned(), message: error.to_string(), validation: None }),
-  )
 }
