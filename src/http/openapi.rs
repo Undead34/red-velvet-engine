@@ -5,6 +5,22 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use utoipa::{Modify, OpenApi, ToSchema};
 
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn openapi_generation_succeeds_without_overflow() {
+    let spec = ApiDoc::openapi();
+    let json = serde_json::to_value(spec).unwrap();
+    assert!(json.get("paths").is_some());
+    assert!(json.get("components").is_some());
+    // Verify FieldDefDoc has items field (uses Value to avoid recursive schema loop)
+    let field_def = json.pointer("/components/schemas/FieldDefDoc/properties").unwrap();
+    assert!(field_def.get("items").is_some());
+  }
+}
+
 const OVERVIEW_MD: &str = include_str!("pages/overview.md");
 
 struct ApiInfoModifier;
@@ -50,6 +66,8 @@ impl Modify for ApiInfoModifier {
       RuleEvaluationDoc,
       RuleEnforcementDoc,
       EngineStatusResponseDoc,
+      EngineReloadResponseDoc,
+      RuleCompileStatsDoc,
       RuleListResponseDoc,
       PaginationMetaDoc,
       RuleDocumentInputDoc,
@@ -68,6 +86,7 @@ impl Modify for ApiInfoModifier {
     (name = "rules", description = "Rules CRUD and validation"),
     (name = "engine", description = "Engine lifecycle operations"),
     (name = "decisions", description = "Decision evaluation endpoints"),
+    (name = "metadata", description = "UI builder configuration and metadata"),
   )
 )]
 pub struct ApiDoc;
@@ -110,8 +129,8 @@ pub struct HealthVersionResponse {
 #[derive(Serialize, Deserialize, ToSchema)]
 #[schema(
   example = json!({
-    "code": "unprocessable_entity",
-    "message": "validation failed",
+    "code": "validation_failed",
+    "message": "request validation failed",
     "validation": {
       "errors": [
         {"path": "enforcement.score_impact", "message": "must be between 1.0 and 10.0"}
@@ -240,6 +259,31 @@ pub struct EngineStatusResponseDoc {
   pub repository_rules: u32,
   pub loaded_rules: u32,
   pub message: String,
+}
+
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct RuleCompileStatsDoc {
+  pub total_rules: u32,
+  pub compiled_rules: u32,
+  pub failed_rules: u32,
+}
+
+#[derive(Serialize, Deserialize, ToSchema)]
+#[schema(
+  example = json!({
+    "version": 1,
+    "loaded_rules": 12,
+    "compile_stats": {
+      "total_rules": 12,
+      "compiled_rules": 10,
+      "failed_rules": 2
+    }
+  })
+)]
+pub struct EngineReloadResponseDoc {
+  pub version: u64,
+  pub loaded_rules: u32,
+  pub compile_stats: RuleCompileStatsDoc,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
@@ -508,5 +552,6 @@ pub struct FieldDefDoc {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub allowed_values: Option<Vec<String>>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub items: Option<Box<FieldDefDoc>>,
+  /// Nested field definition (recursive structure for arrays). Defined loosely to avoid schema recursion.
+  pub items: Option<Value>,
 }

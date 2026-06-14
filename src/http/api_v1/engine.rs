@@ -5,7 +5,7 @@ use tracing::{error, info, instrument};
 use rve_core::ports::rule_engine::RuleCompileStats;
 use rve_core::services::engine::DecisionService;
 
-use crate::http::openapi::{EngineStatusResponseDoc, ErrorResponse};
+use crate::http::openapi::{EngineReloadResponseDoc, EngineStatusResponseDoc, ErrorResponse};
 use crate::http::state::AppState;
 
 use super::errors::map_engine_service_error;
@@ -83,7 +83,7 @@ pub async fn status(
   path = "/api/v1/engine/reload",
   tag = "engine",
   responses(
-    (status = 200, description = "Runtime ruleset reloaded", body = serde_json::Value),
+    (status = 200, description = "Runtime ruleset reloaded", body = EngineReloadResponseDoc),
     (status = 500, description = "Failed to reload runtime", body = ErrorResponse)
   )
 )]
