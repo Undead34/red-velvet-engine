@@ -1,0 +1,29 @@
+pub mod decisions;
+pub mod engine;
+pub mod errors;
+pub mod rules;
+pub mod ui;
+
+use axum::{
+  Router,
+  routing::{get, post},
+};
+
+use crate::interfaces::http::state::AppState;
+
+pub fn router() -> Router<AppState> {
+  Router::new()
+    .route("/rules", get(rules::list_rules).post(rules::create_rule))
+    .route(
+      "/rules/{id}",
+      get(rules::get_rule)
+        .put(rules::update_rule)
+        .patch(rules::patch_rule)
+        .delete(rules::delete_rule),
+    )
+    .route("/ui/builder-config", get(ui::builder_config))
+    .route("/engine/status", get(engine::status))
+    .route("/decisions", post(decisions::create_decision))
+    .route("/decisions/trace", post(decisions::create_decision_trace))
+    .route("/engine/reload", post(engine::reload))
+}

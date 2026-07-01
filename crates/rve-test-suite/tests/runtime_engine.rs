@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashSet};
 
 use chrono::Utc;
-use rve::engine::DataflowRuleEngine;
+use rve::infrastructure::runtime::DataflowRuleEngine;
 use rve_core::{
   domain::{
     common::{
@@ -224,8 +224,7 @@ fn valid_event_in_channel(channel: &str) -> Event {
     },
     Signals { flags: BTreeMap::from([]) },
     Payload::value_transfer(
-      rve_core::domain::common::Money::from_major_str("100.0", Currency::new("USD").unwrap())
-        .unwrap(),
+      rve_core::domain::common::Money::parse("100.0", Currency::new("USD").unwrap()).unwrap(),
       Parties {
         originator: Party::new(
           rve_core::domain::common::EntityType::Individual,

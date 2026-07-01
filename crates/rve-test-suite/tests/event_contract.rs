@@ -72,8 +72,7 @@ fn valid_event() -> Event {
   let signals = Signals { flags: BTreeMap::from([(Signal::Vpn, Flag::No)]) };
 
   let payload = Payload::value_transfer(
-    rve_core::domain::common::Money::from_major_str("100.5", Currency::new("USD").unwrap())
-      .unwrap(),
+    rve_core::domain::common::Money::parse("100.5", Currency::new("USD").unwrap()).unwrap(),
     Parties {
       originator: Party::new(
         rve_core::domain::common::EntityType::Individual,
@@ -106,7 +105,7 @@ fn valid_event() -> Event {
 fn creates_valid_event() {
   let event = valid_event();
   let transfer = event.payload.as_value_transfer().expect("value transfer payload");
-  assert_eq!(transfer.money.ccy().as_str(), "USD");
+  assert_eq!(transfer.money.currency().alpha(), "USD");
 }
 
 #[test]

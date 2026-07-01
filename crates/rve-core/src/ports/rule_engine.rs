@@ -8,6 +8,7 @@ use crate::domain::{
   rule::{Rule, RuleAction},
 };
 
+/// Compilation counters reported by the runtime.
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct RuleCompileStats {
   pub total_rules: u32,
@@ -15,6 +16,7 @@ pub struct RuleCompileStats {
   pub failed_rules: u32,
 }
 
+/// Snapshot returned whenever a ruleset is published to the runtime.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RulesetSnapshot {
   pub version: u64,
@@ -22,6 +24,7 @@ pub struct RulesetSnapshot {
   pub compile_stats: RuleCompileStats,
 }
 
+/// Single runtime hit emitted by a matching rule.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RuntimeHit {
   pub rule_id: RuleId,
@@ -32,6 +35,7 @@ pub struct RuntimeHit {
   pub tags: Vec<String>,
 }
 
+/// Raw runtime evaluation output.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RuntimeEvaluation {
   pub score: f32,
@@ -40,6 +44,7 @@ pub struct RuntimeEvaluation {
   pub rollout_bucket: u8,
 }
 
+/// Runtime status exposed by outbound engines.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RuleEngineStatus {
   pub mode: String,
@@ -49,6 +54,7 @@ pub struct RuleEngineStatus {
   pub compile_stats: RuleCompileStats,
 }
 
+/// Single step in an execution trace.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RuleEngineTraceStep {
   pub workflow_id: String,
@@ -58,18 +64,21 @@ pub struct RuleEngineTraceStep {
   pub result: String,
 }
 
+/// Trace emitted by a runtime evaluation.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RuleEngineTrace {
   pub channel: Option<String>,
   pub steps: Vec<RuleEngineTraceStep>,
 }
 
+/// Raw runtime output containing both evaluation and trace information.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RuleEngineExecution {
   pub evaluation: RuntimeEvaluation,
   pub trace: RuleEngineTrace,
 }
 
+/// Runtime-level failures exposed to the application layer.
 #[derive(Debug, Error, Clone, Serialize, Deserialize)]
 pub enum RuntimeEngineError {
   #[error("runtime compilation error for {rule_id:?}: {message}")]
@@ -84,19 +93,31 @@ pub enum RuntimeEngineError {
   Internal { message: String },
 }
 
+/// Outbound port for rule evaluation runtimes.
 #[async_trait]
 pub trait RuleEnginePort: Send + Sync {
+  /// Publishes a full ruleset snapshot to the runtime.
   async fn publish_rules(&self, rules: Vec<Rule>) -> Result<RulesetSnapshot, RuntimeEngineError>;
+
+  /// Evaluates an event using the active ruleset.
   async fn evaluate(&self, event: &Event) -> Result<RuntimeEvaluation, RuntimeEngineError>;
+
+  /// Evaluates an event and returns the underlying execution trace.
   async fn evaluate_with_trace(
     &self,
     event: &Event,
   ) -> Result<RuleEngineExecution, RuntimeEngineError>;
+
+  /// Evaluates an event using an explicit runtime channel override.
   async fn evaluate_in_channel(
     &self,
     channel: &str,
     event: &Event,
   ) -> Result<RuntimeEvaluation, RuntimeEngineError>;
+
+  /// Rebuilds the currently published ruleset.
   async fn reload(&self) -> Result<RulesetSnapshot, RuntimeEngineError>;
+
+  /// Returns the current runtime status.
   fn status(&self) -> Result<RuleEngineStatus, RuntimeEngineError>;
 }

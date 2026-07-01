@@ -12,8 +12,8 @@ use tokio::sync::RwLock as AsyncRwLock;
 use tower::ServiceExt;
 
 use rve::{
-  engine::DataflowRuleEngine,
-  http::{build_router, state::AppState},
+  infrastructure::runtime::DataflowRuleEngine,
+  interfaces::http::{build_router, state::AppState},
 };
 use rve_core::{
   domain::{common::RuleId, event::Event, rule::Rule},
@@ -35,17 +35,11 @@ async fn runtime_app() -> Router {
 }
 
 fn test_state() -> AppState {
-  AppState {
-    rule_engine: Arc::new(TestRuleEngine::default()),
-    rule_repo: Arc::new(InMemoryRuleRepository::default()),
-  }
+  AppState::new(Arc::new(InMemoryRuleRepository::default()), Arc::new(TestRuleEngine::default()))
 }
 
 fn runtime_state() -> AppState {
-  AppState {
-    rule_engine: Arc::new(DataflowRuleEngine::new()),
-    rule_repo: Arc::new(InMemoryRuleRepository::default()),
-  }
+  AppState::new(Arc::new(InMemoryRuleRepository::default()), Arc::new(DataflowRuleEngine::new()))
 }
 
 async fn response_json(response: Response) -> Value {
@@ -145,6 +139,7 @@ fn event_payload_in_channel(channel: &str) -> Value {
       }
     },
     "payload": {
+      "type": "value_transfer",
       "money": {
         "minor_units": 10050,
         "ccy": "USD"
